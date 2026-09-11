@@ -1,0 +1,79 @@
+flowchart TD
+    %% FASE 1: AUTHENTICATION & INIT
+    subgraph Phase1 ["FASE 1: Otentikasi & Inisialisasi Sesi"]
+        A1([User Buka Dashboard]) --> A2[Input Username & Password]
+        A2 --> A3{Validasi Credential REST API}
+        A3 -- "Gagal (401/403)" --> A4[Tampilkan Error Login] --> A2
+        A3 -- "Sukses (200)" --> A5[Generate JWT Token & Simpan LocalStorage]
+        A5 --> A6[Connect WebSocket Socket.io dengan Token JWT]
+        A6 --> A7[Fetch Nodes & Links dari SQL Server]
+        A7 --> A8[Render Canvas Peta & Summary Status Bar]
+    end
+
+    %% FASE 2: BACKGROUND QUEUE & POLLING
+    subgraph Phase2 ["FASE 2: Background Polling Engine (BullMQ/Redis)"]
+        B1([Scheduler Tick - Tiap 30s]) --> B2[Query List Perangkat Aktif dari SQL Server]
+        B2 --> B3[Enqueue Jobs ke BullMQ / Memurai Redis]
+        B3 --> B4[Poller Workers Dequeue Jobs secara Paralel]
+        
+        B4 --> B5{Vendor Hardware}
+        B5 -- "Cisco / HPE" --> B6[Query SNMP OID Port, CPU, Uptime]
+        B5 -- "UPS System" --> B7[Query SNMP OID Battery & AC Power]
+        B5 -- "Panasonic NVR" --> B8[Query ICMP Ping / Availability]
+        
+        B6 & B7 & B8 --> B9{Perangkat Merespon?}
+        B9 -- "Ya" --> B10["Set Temp Status = UP / WARNING"]
+        B9 -- "Tidak (Timeout)" --> B11["Retry Max 2x"] --> B12{Tetap Timeout?}
+        B12 -- "Tidak" --> B10
+        B12 -- "Ya" --> B13["Set Temp Status = DOWN"]
+    end
+
+    %% FASE 3: STATUS EVALUATION & ALERTING
+    subgraph Phase3 ["FASE 3: Evaluasi Status & Email Alert Gateway"]
+        B10 & B13 --> C1[Evaluator Engine Cek Status Sebelumnya di DB]
+        C1 --> C2[Update Record Status & LastPolledAt di SQL Server]
+        C2 --> C3["Emit Push Event Socket.io 'device:status_update'"]
+        
+        C1 --> C4{Status Berubah ke DOWN?}
+        C4 -- "Tidak" --> C5[Abaikan Alert]
+        C4 -- "Ya (Transisi UP -> DOWN)" --> C6{"Cek Cooldown Redis Flag (15 Menit)"}
+        C6 -- "Active" --> C7[Abaikan - Mencegah Flooding Email]
+        C6 -- "Clear" --> C8[Trigger Nodemailer SMTP - Kirim Email Alert]
+        C8 --> C9["Set Redis Cooldown Flag = 15 Menit"]
+    end
+
+    %% FASE 4: USER INTERACTION & CANVAS
+    subgraph Phase4 ["FASE 4: Interaksi UI & Dashboard Peta Real-Time"]
+        C3 --> D1[Socket.io Client Terima Payload Status]
+        D1 --> D2[Ikon Node di Canvas Berubah Warna Instan]
+        
+        A8 --> D3[User Klik Ikon Node]
+        D3 --> D4["Tampilkan Modal Detail: IP, CPU, Uptime, Alert Log"]
+        
+        A8 --> D5[User Drag and Drop Ikon Node]
+        D5 --> D6[Kirim PosX, PosY Baru via REST API]
+        D6 --> D7[Update Posisi Node di SQL Server]
+    end
+
+    %% FASE 5: DEVICE MANAGEMENT & DISCOVERY
+    subgraph Phase5 ["FASE 5: Manajemen Perangkat & Auto-Discovery"]
+        E1([User Klik Tambah Perangkat]) --> E2[Input Hostname, IP, Vendor, SNMP Key]
+        E2 --> E3[Simpan Perangkat Baru ke SQL Server]
+        E3 --> E4[Trigger Auto-Discovery LLDP / CDP Engine]
+        E4 --> E5[Query SNMP OID LLDP Neighbor ID & Port]
+        E5 --> E6{Ditemukan Switch Tetangga?}
+        E6 -- "Ya" --> E7[Simpan Link ke Tabel TopologyLinks]
+        E6 -- "Tidak" --> E8[Buat Node Standalone]
+        E7 & E8 --> E9[Re-render Canvas Peta Topologi]
+    end
+
+    %% Styling
+    classDef startStyle fill:#1F4E78,stroke:#1F4E78,color:#fff,font-weight:bold;
+    classDef procStyle fill:#ffffff,stroke:#1F4E78,stroke-width:1px;
+    classDef condStyle fill:#ffeb9c,stroke:#b78103,color:#000;
+    classDef alertStyle fill:#ffc7ce,stroke:#9c0006,color:#9c0006,font-weight:bold;
+
+    class A1,B1,E1 startStyle;
+    class A2,A4,A5,A6,A7,A8,B2,B3,B4,B6,B7,B8,B10,B11,B13,C1,C2,C3,C5,C7,C9,D1,D2,D3,D4,D5,D6,D7,E2,E3,E4,E5,E7,E8,E9 procStyle;
+    class A3,B5,B9,B12,C4,C6,E6 condStyle;
+    class C8 alertStyle;

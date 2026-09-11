@@ -1,0 +1,66 @@
+flowchart TD
+    subgraph ClientLayer ["1. Presentation Layer (Browser Client)"]
+        UI["Web Dashboard UI"]
+        Canvas["Interactive Network Map Canvas (Vis.js/Cytoscape)"]
+    end
+
+    subgraph AccessLayer ["2. Gateway & Security Layer"]
+        AuthMiddleware["JWT & RBAC Middleware"]
+    end
+
+    subgraph ApplicationLayer ["3. Backend Application Layer (Node.js running via PM2 Service)"]
+        Server["Express App (server.js)"]
+        SocketServer["Authenticated WebSocket Server (Socket.io)"]
+        Scheduler["Cron Scheduler Engine (30s Tick)"]
+        
+        subgraph Queues ["Queue System"]
+            BullQueue["BullMQ Queue Instance"]
+        end
+
+        subgraph Workers ["Parallel Worker Engine"]
+            CiscoPoller["ciscoService.js (SNMP)"]
+            HPEPoller["hpeService.js (SNMP)"]
+            UPSPoller["upsService.js (SNMP)"]
+            NVRPoller["nvrService.js (Ping/SNMP)"]
+            LLDPDiscovery["lldpDiscovery.js (LLDP/CDP Parser)"]
+        end
+
+        Evaluator["Status Evaluator Engine"]
+        MailService["SMTP Alert Mailer (Nodemailer)"]
+    end
+
+    subgraph DataLayer ["4. Data & Caching Layer"]
+        SQLServer[("Microsoft SQL Server (NTMS_DB)")]
+        RedisWin[("Memurai / Redis for Windows")]
+    end
+
+    subgraph HardwareLayer ["5. Physical Hardware Layer"]
+        SwCisco["Cisco Switches"]
+        SwHPE["HPE Switches"]
+        UPSDev["UPS Infrastructure"]
+        NVRDev["Panasonic NVRs"]
+    end
+
+    %% Flow Connections
+    UI <-->|"HTTP REST API / Auth"| AuthMiddleware
+    UI <-->|"Real-Time Push (Socket.io)"| SocketServer
+    AuthMiddleware --> Server
+
+    Server --> SQLServer
+    Scheduler -->|"Enqueue Jobs"| BullQueue
+    BullQueue <==>|"Job Persistence & Locks"| RedisWin
+    BullQueue --> Workers
+
+    Workers <==>|"SNMP v2c/v3 Query"| SwCisco & SwHPE & UPSDev
+    Workers <==>|"ICMP Ping"| NVRDev
+
+    Workers --> Evaluator
+    Evaluator -->|"Update Status"| SQLServer
+    Evaluator -->|"Push Update Event"| SocketServer
+    Evaluator -->|"Check Cooldown"| RedisWin
+    Evaluator -->|"Send Critical Alert"| MailService
+
+    %% Styling
+    classDef headerStyle fill:#1F4E78,stroke:#1F4E78,color:#fff,font-weight:bold;
+    classDef boxStyle fill:#F8F9FA,stroke:#1F4E78,stroke-width:1.5px;
+    class ClientLayer,AccessLayer,ApplicationLayer,DataLayer,HardwareLayer boxStyle;

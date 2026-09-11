@@ -1,0 +1,37 @@
+erDiagram
+    Users {
+        int UserId PK "IDENTITY(1,1)"
+        nvarchar Username "UNIQUE, NOT NULL"
+        nvarchar PasswordHash "NOT NULL"
+        nvarchar Role "CHECK('Admin','Operator')"
+        datetime CreatedAt "DEFAULT GETDATE()"
+    }
+
+    Devices {
+        int DeviceId PK "IDENTITY(1,1)"
+        nvarchar DeviceName "NOT NULL"
+        nvarchar IpAddress "UNIQUE, NOT NULL"
+        nvarchar VendorType "CHECK('cisco','hpe','ups','nvr')"
+        nvarchar SnmpCommunity "DEFAULT 'public'"
+        nvarchar CurrentStatus "CHECK('UP','WARNING','DOWN')"
+        datetime LastPolledAt "NULLABLE"
+    }
+
+    TopologyNodes {
+        int NodeId PK "IDENTITY(1,1)"
+        int DeviceId FK "References Devices(DeviceId)"
+        float PosX "NOT NULL, DEFAULT 0.0"
+        float PosY "NOT NULL, DEFAULT 0.0"
+    }
+
+    TopologyLinks {
+        int LinkId PK "IDENTITY(1,1)"
+        int SourceDeviceId FK "References Devices(DeviceId)"
+        int TargetDeviceId FK "References Devices(DeviceId)"
+        nvarchar SourcePort "NULLABLE (e.g. Gi1/0/24)"
+        nvarchar TargetPort "NULLABLE (e.g. Gi1/0/1)"
+    }
+
+    %% Relationships
+    Devices ||--|| TopologyNodes : "maps coordinates to"
+    Devices ||--o{ TopologyLinks : "acts as source or target in"

@@ -1,0 +1,31 @@
+@import 'reactflow/dist/style.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0a0e17;
+  color: #f3f4f6;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Transparan saat card didrag untuk memudahkan posisikan grid/garis */
+.react-flow__node.dragging {
+  opacity: 0.4 !important;
+  transition: opacity 0.2s ease;
+}
+
+/* Pastikan layer Garis Koneksi (Edges) selalu berada di atas card dan tidak terhalang */
+.react-flow__edges {
+  z-index: 100 !important;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #38bdf8 !important;
+  stroke-width: 3px !important;
+}
