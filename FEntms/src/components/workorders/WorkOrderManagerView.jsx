@@ -20,6 +20,8 @@ import WorkOrderControlsBar from './WorkOrderControlsBar';
 import DailyTimelineScheduler from './DailyTimelineScheduler';
 import TaskPoolSidebar from './TaskPoolSidebar';
 import WorkOrdersTable from './WorkOrdersTable';
+import WorkOrderPipelineEditor from './WorkOrderPipelineEditor';
+import WorkOrderOpenTasksQueue from './WorkOrderOpenTasksQueue';
 import WorkOrderModal from './WorkOrderModal';
 import WorkOrderDetailModal from './WorkOrderDetailModal';
 import TechnicianTasksModal from './TechnicianTasksModal';
@@ -474,6 +476,18 @@ export default function WorkOrderManagerView() {
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <div className="flex items-center gap-2">
                     <button
+                        onClick={() => setViewTab('PIPELINE_EDITOR')}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                            viewTab === 'PIPELINE_EDITOR'
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        }`}
+                    >
+                        <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>1. Editor Surat Perintah Kerja (Pipeline)</span>
+                    </button>
+
+                    <button
                         onClick={() => setViewTab('SCHEDULER_WORKSPACE')}
                         className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
                             viewTab === 'SCHEDULER_WORKSPACE'
@@ -481,8 +495,8 @@ export default function WorkOrderManagerView() {
                                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                         }`}
                     >
-                        <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Daily Timeline & Dispatcher (Drag & Drop)</span>
+                        <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>2. Daily Timeline Scheduler (Drag & Drop)</span>
                     </button>
 
                     <button
@@ -494,7 +508,7 @@ export default function WorkOrderManagerView() {
                         }`}
                     >
                         <Briefcase className="w-3.5 h-3.5" />
-                        <span>Arsip Seluruh Work Order</span>
+                        <span>3. Arsip Seluruh Work Order</span>
                         <span className="px-1.5 py-0.2 text-[10px] bg-slate-950/60 rounded-full font-mono">
                             {workOrders.length}
                         </span>
@@ -561,7 +575,103 @@ export default function WorkOrderManagerView() {
                 }}
             />
 
-            {/* TAB 1: INTEGRATED SCHEDULER WORKSPACE */}
+            {/* TAB 1: INTEGRATED PIPELINE FORM EDITOR (SEPERTI BERITA ACARA IT) */}
+            {viewTab === 'PIPELINE_EDITOR' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
+                    {/* Panel Kiri: Antrean Task Open (4 Kolom) */}
+                    <div className="lg:col-span-4">
+                        <WorkOrderOpenTasksQueue
+                            tasks={filteredSourceTasks}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            onSelectTask={(task) => {
+                                handleAssignFromTask(task);
+                                setIsModalOpen(false); // keep in pipeline editor view
+                            }}
+                            onSelectGroup={(group) => {
+                                handleAssignFromGroup(group);
+                                setIsModalOpen(false); // keep in pipeline editor view
+                            }}
+                            onOpenCreateCustom={() => {
+                                setEditingWo(null);
+                                setFormData({
+                                    woType: 'PREVENTIVE_MAINTENANCE',
+                                    title: '',
+                                    description: '',
+                                    priority: 'MEDIUM',
+                                    status: 'ASSIGNED',
+                                    targetDate: selectedDate,
+                                    startTime: '08:00',
+                                    endTime: '10:00',
+                                    estimatedHours: 2.0,
+                                    unitCycleTimeMinutes: 30,
+                                    targetDurationMinutes: 120,
+                                    actualHours: '',
+                                    actualStartTime: '',
+                                    actualEndTime: '',
+                                    actualDurationMinutes: '',
+                                    assignedTechnicianNik: '',
+                                    assignedTechnicianName: '',
+                                    teamMembers: [],
+                                    devices: [],
+                                    referenceId: '',
+                                    completionNotes: '',
+                                    remarks: ''
+                                });
+                            }}
+                        />
+                    </div>
+
+                    {/* Panel Kanan: Form Editor Surat Perintah Kerja (8 Kolom) */}
+                    <div className="lg:col-span-8">
+                        <WorkOrderPipelineEditor
+                            formData={formData}
+                            setFormData={setFormData}
+                            editingWo={editingWo}
+                            technicians={technicians}
+                            inventoryDevices={contextDevices || []}
+                            onSubmit={async (e) => {
+                                e?.preventDefault?.();
+                                const success = await handleSaveWorkOrder(formData, editingWo);
+                                if (success) {
+                                    setEditingWo(null);
+                                }
+                            }}
+                            onCancel={() => {
+                                setEditingWo(null);
+                                setFormData({
+                                    woType: 'PREVENTIVE_MAINTENANCE',
+                                    title: '',
+                                    description: '',
+                                    priority: 'MEDIUM',
+                                    status: 'ASSIGNED',
+                                    targetDate: selectedDate,
+                                    startTime: '08:00',
+                                    endTime: '10:00',
+                                    estimatedHours: 2.0,
+                                    unitCycleTimeMinutes: 30,
+                                    targetDurationMinutes: 120,
+                                    actualHours: '',
+                                    actualStartTime: '',
+                                    actualEndTime: '',
+                                    actualDurationMinutes: '',
+                                    assignedTechnicianNik: '',
+                                    assignedTechnicianName: '',
+                                    teamMembers: [],
+                                    devices: [],
+                                    referenceId: '',
+                                    completionNotes: '',
+                                    remarks: ''
+                                });
+                            }}
+                            onSelectTechnician={handleSelectTechnician}
+                            isLoading={isLoading}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 2: INTEGRATED SCHEDULER WORKSPACE */}
             {viewTab === 'SCHEDULER_WORKSPACE' && (
                 <div className="flex items-stretch gap-3 flex-1 h-[calc(100vh-320px)] min-h-[550px] overflow-hidden">
                     <TaskPoolSidebar
