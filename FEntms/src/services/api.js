@@ -14,7 +14,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 10000,
+    timeout: 30000,
 });
 
 api.interceptors.request.use(
@@ -133,4 +133,149 @@ export const bulkDeleteDevicesFromDB = async (pids) => {
     return response.data;
 };
 
-export default api;
+export const getDeviceTelemetryHistoryFromDB = async (pid, range = '24h') => {
+    const response = await api.get(`/devices/${pid}/history?range=${range}`);
+    return response.data;
+};
+
+export const getSmartAlertsFromDB = async () => {
+    const response = await api.get('/alerts');
+    return response.data;
+};
+
+export const ackSmartAlertInDB = async (id, noteData) => {
+    const response = await api.post(`/alerts/${id}/ack`, noteData);
+    return response.data;
+};
+
+export const getLogSummaryFromDB = async (window = '24h') => {
+    const response = await api.get(`/logs/summary?window=${window}`);
+    return response.data;
+};
+
+export const getDevicePredictionsFromDB = async (pid) => {
+    const response = await api.get(`/devices/${pid}/predictions`);
+    return response.data;
+};
+
+export const getRootCauseAnalysisFromDB = async () => {
+    const response = await api.get('/topology/rca');
+    return response.data;
+};
+
+/* ==========================================================================
+   INCIDENT REPORTS & BERITA ACARA API SERVICES
+   ========================================================================== */
+
+export const getIncidentReportsFromDB = async (status = 'ALL') => {
+    const response = await api.get(`/incident-reports?status=${status}`);
+    return response.data;
+};
+
+export const saveIncidentReportToDB = async (reportData) => {
+    const response = await api.post('/incident-reports', reportData);
+    return response.data;
+};
+
+export const updateIncidentReportStatusInDB = async (id, updateData) => {
+    const response = await api.put(`/incident-reports/${id}/status`, updateData);
+    return response.data;
+};
+
+export const deleteIncidentReportFromDB = async (id) => {
+    const response = await api.delete(`/incident-reports/${id}`);
+    return response.data;
+};
+
+/* ==========================================================================
+   USER & RBAC MANAGEMENT API SERVICES (SPV & DEPT HEAD)
+   ========================================================================== */
+
+export const getUsersFromDB = async () => {
+    const response = await api.get('/users');
+    return response.data;
+};
+
+export const createUserInDB = async (userData) => {
+    const response = await api.post('/users', userData);
+    return response.data;
+};
+
+export const updateUserInDB = async (nik, userData) => {
+    const response = await api.put(`/users/${nik}`, userData);
+    return response.data;
+};
+
+export const deleteUserFromDB = async (nik) => {
+    const response = await api.delete(`/users/${nik}`);
+    return response.data;
+};
+
+/* ==========================================================================
+   MAINTENANCE SCHEDULES (ITAM) API SERVICES
+   ========================================================================== */
+
+export const getMaintenanceSchedulesFromDB = async (params = {}) => {
+    const response = await api.get('/maintenance-schedules', { params });
+    return response.data;
+};
+
+export const getMaintenanceSummaryFromDB = async () => {
+    const response = await api.get('/maintenance-schedules/summary');
+    return response.data;
+};
+
+/* ==========================================================================
+   WORK ORDER & MAN POWER ALLOCATION API SERVICES
+   ========================================================================== */
+
+export const getWorkOrdersFromDB = async (params = {}) => {
+    const response = await api.get('/work-orders', { params });
+    return response.data;
+};
+
+export const getWorkOrderSummaryFromDB = async () => {
+    const response = await api.get('/work-orders/summary');
+    return response.data;
+};
+
+export const saveWorkOrderToDB = async (woData) => {
+    const response = await api.post('/work-orders', woData);
+    return response.data;
+};
+
+export const updateWorkOrderInDB = async (id, woData) => {
+    const response = await api.put(`/work-orders/${id}`, woData);
+    return response.data;
+};
+
+export const deleteWorkOrderFromDB = async (id) => {
+    const response = await api.delete(`/work-orders/${id}`);
+    return response.data;
+};
+
+/* ==========================================================================
+   SCHEDULE BREAKS (WAKTU ISTIRAHAT DINAMIS) API SERVICES
+   ========================================================================== */
+
+export const getScheduleBreaksFromDB = async (params = {}) => {
+    const response = await api.get('/schedule-breaks', { params });
+    return response.data;
+};
+
+export const saveScheduleBreakToDB = async (breakData) => {
+    const response = await api.post('/schedule-breaks', breakData);
+    return response.data;
+};
+
+export const updateScheduleBreakInDB = async (id, breakData) => {
+    const response = await api.put(`/schedule-breaks/${id}`, breakData);
+    return response.data;
+};
+
+export const deleteScheduleBreakFromDB = async (id) => {
+    const response = await api.delete(`/schedule-breaks/${id}`);
+    return response.data;
+};
+
+export default api;

@@ -5,7 +5,7 @@ import Setting from '../models/Setting.js';
 import Floorplan from '../models/Floorplan.js';
 import TopologyDrawing from '../models/TopologyDrawing.js';
 import snmp from 'net-snmp';
-import { globalNvrCache } from '../utils/cache.js';
+import { globalNvrCache, globalSnmpCache, globalMetricsCache } from '../utils/cache.js';
 
 export const getAllDevices = async (req, res) => {
     try {
@@ -43,6 +43,18 @@ export const getAllDevices = async (req, res) => {
                     hdd: cachedNvr.hdd || [],
                     cameras: cachedNvr.cameras || []
                 };
+            }
+
+            // Inject cached SNMP & vendor metrics if available
+            const cachedSnmp = globalSnmpCache.get(cleanPID);
+            if (cachedSnmp) {
+                devObj.snmpData = cachedSnmp;
+            }
+
+            const cachedMetrics = globalMetricsCache.get(cleanPID);
+            if (cachedMetrics) {
+                devObj.vendorMetrics = cachedMetrics;
+                if (cachedMetrics.info) devObj.info = cachedMetrics.info;
             }
 
             return devObj;
@@ -109,7 +121,7 @@ export const updateDevice = async (req, res) => {
     const { 
         hostname, ipAddress, mac, vendorType, segment, type, vendor, pingMethod,
         snmpVersion, snmpPort, snmpCommunity, snmpUser, snmpAuthProto, 
-        snmpAuthKey, snmpPrivProto, snmpPrivKey 
+        snmpAuthKey, snmpPrivProto, snmpPrivKey, port 
     } = req.body;
 
     try {
@@ -130,6 +142,7 @@ export const updateDevice = async (req, res) => {
             if (segment !== undefined) netDev.SEGMENT = segment;
             if (type !== undefined) netDev.TYPE = type;
             if (vendor !== undefined) netDev.VENDOR = vendor;
+            if (port !== undefined) netDev.PORT = String(port);
             if (pingMethod !== undefined) netDev.PING_METHOD = pingMethod;
             if (snmpVersion !== undefined) netDev.SNMP_VERSION = snmpVersion;
             if (snmpPort !== undefined) netDev.SNMP_PORT = snmpPort;

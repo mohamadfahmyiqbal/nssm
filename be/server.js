@@ -82,6 +82,7 @@ app.use((err, req, res, next) => {
 import Setting from './src/models/Setting.js';
 import DeviceLog from './src/models/DeviceLog.js';
 import TopologyDrawing from './src/models/TopologyDrawing.js';
+import IncidentReport from './src/models/IncidentReport.js';
 
 // ==========================================
 // 4. SERVER BOOTSTRAP & WORKER INITIALIZATION
@@ -95,7 +96,8 @@ const startServer = async () => {
         await Setting.sync();
         await DeviceLog.sync();
         await TopologyDrawing.sync();
-        console.log('✅ [Sequelize ORM] Setting, DeviceLog & TopologyDrawing tables synchronized.');
+        await IncidentReport.sync();
+        console.log('✅ [Sequelize ORM] Setting, DeviceLog, TopologyDrawing & IncidentReport tables synchronized.');
     } catch (err) {
         console.error('❌ [Sequelize ORM] Failed to sync tables:', err.message);
     }

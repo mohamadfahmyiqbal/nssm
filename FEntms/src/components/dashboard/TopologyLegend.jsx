@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HelpCircle, ChevronUp, ChevronDown, Activity, Cpu, Shield, Server, Camera, Monitor, Network } from 'lucide-react';
 
 export default function TopologyLegend() {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
         <div className="absolute top-6 left-6 z-20 w-72 bg-slate-900/80 border border-slate-700/60 rounded-2xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl font-mono text-xs text-slate-300 transition-all duration-300">
@@ -26,21 +26,57 @@ export default function TopologyLegend() {
                 <div className="mt-3 space-y-3 text-[11px]">
                     {/* Status Perangkat */}
                     <div>
-                        <div className="text-[10px] font-bold text-slate-400 mb-1.5 flex items-center gap-1">
-                            <Activity className="w-3 h-3 text-emerald-400" /> DEVICE STATUS
+                        <div className="text-[10px] font-bold text-slate-400 mb-2 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                            <Activity className="w-3.5 h-3.5 text-emerald-400" /> DEVICE STATUS
                         </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-500/50"></span>
-                                <span>Normal (UP)</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-2 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.7)] shrink-0"></span>
+                                <span className="text-slate-200">Normal / Up</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                                <span>Warning / High CPU</span>
+                            <div className="flex items-center gap-2 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_8px_rgba(245,158,11,0.7)] animate-pulse shrink-0"></span>
+                                <span className="text-slate-200">Warning / High</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-                                <span>Down / Timeout</span>
+                            <div className="flex items-center gap-2 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse shrink-0"></span>
+                                <span className="text-slate-200">Critical / Down</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-slate-950/60 p-1.5 rounded border border-slate-800">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#6B7280] shrink-0"></span>
+                                <span className="text-slate-400">Offline / Unmanaged</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr className="border-slate-800" />
+
+                    {/* Heatmap Beban Port Switch */}
+                    <div>
+                        <div className="text-[10px] font-bold text-slate-400 mb-2 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                            <Network className="w-3.5 h-3.5 text-sky-400" /> PORT HEATMAP (LOAD)
+                        </div>
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between bg-slate-950/60 px-2.5 py-1 rounded border border-slate-800/80">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                                    <span className="text-emerald-400 font-medium">Ringan / Normal</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono font-bold">&lt; 50%</span>
+                            </div>
+                            <div className="flex items-center justify-between bg-slate-950/60 px-2.5 py-1 rounded border border-slate-800/80">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.8)]"></span>
+                                    <span className="text-amber-400 font-medium">Beban Sedang</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono font-bold">50% - 80%</span>
+                            </div>
+                            <div className="flex items-center justify-between bg-slate-950/60 px-2.5 py-1 rounded border border-slate-800/80">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded bg-[#EF4444] shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
+                                    <span className="text-rose-400 font-medium">Beban Kritis / Error</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono font-bold">&gt; 80%</span>
                             </div>
                         </div>
                     </div>

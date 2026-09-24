@@ -16,7 +16,10 @@ export const useTopologyNodes = (devices = [], activeFilter = 'ALL', nvrSnmpData
 
         let calcSubType = dev.type?.toLowerCase();
         if (!calcSubType || calcSubType === 'server' || calcSubType === 'cctv') {
-            if (devName && devName.toLowerCase().includes('nvr')) calcSubType = 'nvr';
+            if (devName && (devName.toLowerCase().includes('forti') || devName.toLowerCase().includes('fw'))) calcSubType = 'firewall';
+            else if (devName && (devName.toLowerCase().includes('ups') || devName.toLowerCase().includes('srvm') || devName.toLowerCase().includes('schneider'))) calcSubType = 'ups';
+            else if (devName && (devName.toLowerCase().includes('ats') || devName.toLowerCase().includes('ap4423'))) calcSubType = 'ats';
+            else if (devName && devName.toLowerCase().includes('nvr')) calcSubType = 'nvr';
             else if (devName && devName.toLowerCase().includes('cam')) calcSubType = 'camera';
             else if (devName && devName.toLowerCase().includes('gather')) calcSubType = 'gathering';
             else calcSubType = calcSubType || 'server';
@@ -92,7 +95,7 @@ export const useTopologyNodes = (devices = [], activeFilter = 'ALL', nvrSnmpData
     }, [devices, activeFilter]);
 
     const defaultEdges = useMemo(() => {
-        return initialEdges || [];
+        return (initialEdges || []).map(e => ({ ...e, type: 'draggable' }));
     }, []);
 
     // Live Telemetry Sync: saat polling di DeviceContext mengupdate status/telemetri, sinkronkan ke node yang ada di canvas
@@ -106,11 +109,13 @@ export const useTopologyNodes = (devices = [], activeFilter = 'ALL', nvrSnmpData
             const updated = currentNodes.map((n) => {
                 if (n.type === 'customGroup') return n;
 
-                const devId = n.id || n.data?.id;
+                const devId = String(n.id || n.data?.id || '').trim().toLowerCase();
 
-                const liveDev = devices.find(d => 
-                    String(d.PID || d.id) === String(devId)
-                );
+                const liveDev = devices.find(d => {
+                    const dPid = String(d.PID || '').trim().toLowerCase();
+                    const dId = String(d.id || '').trim().toLowerCase();
+                    return (dPid && dPid === devId) || (dId && dId === devId);
+                });
 
                 if (!liveDev) return n;
 
@@ -122,13 +127,25 @@ export const useTopologyNodes = (devices = [], activeFilter = 'ALL', nvrSnmpData
                 const liveHost = liveDev.hostname || liveDev.name || liveDev.label;
                 const liveIp = liveDev.ip || liveDev.IP;
 
+                const liveFloor = liveDev.floor || n.data.floor;
+                const liveLocation = liveDev.location || n.data.location;
+                const liveVendor = liveDev.vendor || n.data.vendor;
+                const liveType = liveDev.type || n.data.subType;
+                const liveMac = liveDev.mac || n.data.mac;
+                const livePort = liveDev.port || n.data.port;
+
                 if (
                     n.data.status !== newStatus || 
                     n.data.cpu !== newCpu || 
                     n.data.memory !== newMem ||
                     n.data.temperature !== newTemp ||
                     (liveHost && n.data.label !== liveHost) ||
-                    (liveIp && n.data.ip !== liveIp)
+                    (liveIp && n.data.ip !== liveIp) ||
+                    (liveFloor && n.data.floor !== liveFloor) ||
+                    (liveLocation && n.data.location !== liveLocation) ||
+                    (liveVendor && n.data.vendor !== liveVendor) ||
+                    (liveMac && n.data.mac !== liveMac) ||
+                    (livePort && n.data.port !== livePort)
                 ) {
                     hasChanged = true;
                     return {
@@ -141,6 +158,11 @@ export const useTopologyNodes = (devices = [], activeFilter = 'ALL', nvrSnmpData
                             cpu: newCpu,
                             memory: newMem,
                             temperature: newTemp,
+                            floor: liveFloor || n.data.floor,
+                            location: liveLocation || n.data.location,
+                            vendor: liveVendor || n.data.vendor,
+                            mac: liveMac || n.data.mac,
+                            port: livePort || n.data.port,
                             trafficIn: liveDev.snmpData?.trafficIn || n.data.trafficIn,
                             trafficOut: liveDev.snmpData?.trafficOut || n.data.trafficOut,
                         }

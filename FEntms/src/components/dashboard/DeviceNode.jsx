@@ -17,25 +17,31 @@ export default function DeviceNode({ data }) {
     const statusStyles = {
         UP: {
             border: 'border-emerald-500/80',
-            glow: 'shadow-glow-green',
-            text: 'text-emerald-400',
-            dot: 'bg-emerald-400',
+            glow: 'shadow-[0_0_15px_rgba(16,185,129,0.45)]',
+            text: 'text-[#10B981]',
+            dot: 'bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]',
         },
         WARNING: {
             border: 'border-amber-500/80',
-            glow: 'shadow-glow-amber',
-            text: 'text-amber-400',
-            dot: 'bg-amber-400',
+            glow: 'shadow-[0_0_15px_rgba(245,158,11,0.45)] animate-pulse',
+            text: 'text-[#F59E0B]',
+            dot: 'bg-[#F59E0B] shadow-[0_0_6px_rgba(245,158,11,0.8)]',
         },
         DOWN: {
             border: 'border-rose-500/80',
-            glow: 'shadow-glow-red animate-pulse',
-            text: 'text-rose-400',
-            dot: 'bg-rose-400',
+            glow: 'shadow-[0_0_18px_rgba(239,68,68,0.55)] animate-pulse',
+            text: 'text-[#EF4444]',
+            dot: 'bg-[#EF4444] shadow-[0_0_8px_rgba(239,68,68,0.8)]',
         },
+        OFFLINE: {
+            border: 'border-slate-600/80',
+            glow: 'shadow-none',
+            text: 'text-[#6B7280]',
+            dot: 'bg-[#6B7280]',
+        }
     };
 
-    const style = statusStyles[data.status] || statusStyles.UP;
+    const style = statusStyles[data.status?.toUpperCase()] || statusStyles.UP;
 
     return (
         <div

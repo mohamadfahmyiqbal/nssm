@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, addEdge } from 'reactflow';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactFlow, { Background, Controls, MiniMap, addEdge, SelectionMode, ConnectionMode } from 'reactflow';
 import { nodeTypes } from '../nodes/nodeTypes';
 import LiveAlertLog from '../dashboard/LiveAlertLog';
 import TopologyLegend from './TopologyLegend';
@@ -7,7 +7,6 @@ import TopologyHeader from './TopologyHeader';
 import DeviceDetailPanel from './DeviceDetailPanel';
 import UnmappedDevicesLegend from '../mapping/canvas/UnmappedDevicesLegend';
 import { useDevices } from '../../context/DeviceContext';
-import { SelectionMode } from 'reactflow';
 import { showConfirm, showToast } from '../../utils/swal';
 
 import { useTopologySnmp } from './hooks/useTopologySnmp';
@@ -17,10 +16,14 @@ import { useTopologyLayout } from './hooks/useTopologyLayout';
 import DraggableEdge from '../edges/DraggableEdge';
 
 const edgeTypes = {
-    draggable: DraggableEdge
+    draggable: DraggableEdge,
+    default: DraggableEdge,
+    smoothstep: DraggableEdge,
+    step: DraggableEdge,
+    straight: DraggableEdge
 };
 
-export default function TopologyCanvas({ selectedNetwork, activeFilter }) {
+export default function TopologyCanvas({ selectedNetwork, activeFilter, onNavigateToIncidents }) {
     const currentFilter = activeFilter || selectedNetwork || 'ALL';
     const { devices } = useDevices();
     const [selectedDevice, setSelectedDevice] = useState(null);
@@ -113,13 +116,53 @@ export default function TopologyCanvas({ selectedNetwork, activeFilter }) {
                         fanStatus: info?.fanStatus || n.data.fanStatus,
                         psuStatus: info?.psuStatus || n.data.psuStatus,
                         raidStatus: info?.raidStatus || n.data.raidStatus,
-                        recordingState: info?.recordingState || n.data.recordingState
+                        recordingState: info?.recordingState || n.data.recordingState,
+                        ports: vendorMetrics?.ports || n.data.ports
                     }
                 };
             }
             return n;
         }));
     }, [vendorMetrics, nvrSnmpData, selectedDevice, setNodes]);
+
+    // Jalur koneksi (edges) yang terhubung ke device yang sedang dipilih/diklik
+    const highlightedEdges = useMemo(() => {
+        if (!selectedDevice) return edges;
+
+        const targetIds = new Set([
+            selectedDevice.id,
+            selectedDevice.PID,
+            selectedDevice.pid,
+            selectedDevice.ip,
+            selectedDevice.hostname,
+            selectedDevice.label,
+            selectedDevice.name
+        ].filter(Boolean).map(String));
+
+        // Tambahkan juga id node yang cocok dari list nodes
+        nodes.forEach(n => {
+            if (
+                targetIds.has(String(n.id)) ||
+                (n.data?.id && targetIds.has(String(n.data.id))) ||
+                (n.data?.ip && targetIds.has(String(n.data.ip))) ||
+                (n.data?.label && targetIds.has(String(n.data.label)))
+            ) {
+                targetIds.add(String(n.id));
+            }
+        });
+
+        return edges.map(edge => {
+            const isConnected = targetIds.has(String(edge.source)) || targetIds.has(String(edge.target));
+            return {
+                ...edge,
+                data: {
+                    ...edge.data,
+                    isConnectedSelected: isConnected
+                },
+                zIndex: isConnected ? 150 : (edge.zIndex || 0)
+            };
+        });
+    }, [edges, selectedDevice, nodes]);
 
     // Mouse / Keyboard / Drag Handlers
     const updateCrosshair = (clientX, clientY) => {
@@ -273,12 +316,7 @@ export default function TopologyCanvas({ selectedNetwork, activeFilter }) {
     };
 
     const onEdgeClick = (event, edge) => {
-        showConfirm('Putus Koneksi?', 'Apakah Anda yakin ingin memutus koneksi antara perangkat ini?', 'Ya, Putuskan')
-        .then((result) => {
-            if (result.isConfirmed) {
-                setEdges((eds) => eds.filter((e) => e.id !== edge.id));
-            }
-        });
+        // Interaksi klik edge dikelola langsung di komponen DraggableEdge
     };
 
     const notifKey = selectedDevice ? (selectedDevice.label || selectedDevice.hostname || selectedDevice.name || selectedDevice.id) : null;
@@ -319,17 +357,10 @@ export default function TopologyCanvas({ selectedNetwork, activeFilter }) {
                     const newNodes = { ...prev.nodes };
                     delete newNodes[targetId];
                     delete newNodes[deviceId];
-                    if (targetIp) delete newNodes[targetIp];
-                    if (targetLabel) delete newNodes[targetLabel];
-                    Object.keys(newNodes).forEach(k => {
-                        if (newNodes[k]?.ip === targetIp || newNodes[k]?.label === targetLabel) {
-                            delete newNodes[k];
-                        }
-                    });
                     return { ...prev, nodes: newNodes };
                 });
                 
-                setNodes((nds) => nds.filter((n) => n.id !== targetId && n.id !== deviceId && (!targetIp || n.data?.ip !== targetIp)));
+                setNodes((nds) => nds.filter((n) => n.id !== targetId && n.id !== deviceId));
                 setEdges((eds) => eds.filter((e) => e.source !== targetId && e.target !== targetId && e.source !== deviceId && e.target !== deviceId));
                 setSelectedDevice(null);
                 showToast('success', 'Perangkat berhasil dikeluarkan dari canvas. Klik "Simpan Layout" untuk menyimpan perubahan.');
@@ -461,9 +492,10 @@ export default function TopologyCanvas({ selectedNetwork, activeFilter }) {
 
                 <ReactFlow
                     nodes={nodes}
-                    edges={edges}
+                    edges={highlightedEdges}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
+                    connectionMode={ConnectionMode.Loose}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
@@ -516,7 +548,7 @@ export default function TopologyCanvas({ selectedNetwork, activeFilter }) {
                     handleRemoveNode={handleRemoveNode}
                 />
 
-                <LiveAlertLog />
+                <LiveAlertLog onNavigateToIncidents={onNavigateToIncidents} />
                 <TopologyLegend />
                 <UnmappedDevicesLegend 
                     className="absolute top-6 right-6"

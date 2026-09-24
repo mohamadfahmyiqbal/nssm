@@ -12,7 +12,15 @@ export const useTopologySnmp = (selectedDevice, setNodes) => {
 
     useEffect(() => {
         const isSwitch = selectedDevice?.subType === 'switch' || selectedDevice?.label?.toLowerCase().includes('sw');
-        const isSnmpTarget = selectedDevice && (selectedDevice.subType === 'nvr' || selectedDevice.subType === 'server' || selectedDevice.subType === 'camera' || selectedDevice.subType === 'cctv' || selectedDevice.subType === 'router' || isSwitch);
+        const isUpsOrAts = selectedDevice?.subType === 'ups' || selectedDevice?.subType === 'ats' || 
+                           selectedDevice?.label?.toLowerCase().includes('ups') || selectedDevice?.label?.toLowerCase().includes('ats') ||
+                           selectedDevice?.vendor?.toLowerCase().includes('srpm') || selectedDevice?.vendor?.toLowerCase().includes('srvm') ||
+                           selectedDevice?.vendor?.toLowerCase().includes('srvpm');
+        const isSnmpTarget = selectedDevice && (
+            selectedDevice.subType === 'nvr' || selectedDevice.subType === 'server' || 
+            selectedDevice.subType === 'camera' || selectedDevice.subType === 'cctv' || 
+            selectedDevice.subType === 'router' || isSwitch || isUpsOrAts
+        );
 
         if (isSnmpTarget) {
             const ip = selectedDevice.ip || '127.0.0.1';
@@ -22,7 +30,7 @@ export const useTopologySnmp = (selectedDevice, setNodes) => {
             setNvrSnmpData(null);
             setVendorMetrics(null);
 
-            api.get(`/devices/${ip}/metrics`)
+            api.get(`/devices/${ip}/metrics`, { timeout: 25000 })
                 .then(res => {
                     if (res.data.success && res.data.data) {
                         const m = res.data.data;

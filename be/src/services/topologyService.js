@@ -1,6 +1,7 @@
 import Asset from '../models/Asset.js';
 import DeviceLog from '../models/DeviceLog.js';
 import { getSwitchPortStatus } from './snmpV3Service.js';
+import { isPortMatching } from '../utils/portMatcher.js';
 
 export const inferSwitchStatus = async (validDevices, deviceStatusMap, credentials, io, trafficCounterMap, prefetchedSwitchData = {}) => {
     // 1. Kumpulkan semua switch dari daftar perangkat
@@ -62,12 +63,28 @@ export const inferSwitchStatus = async (validDevices, deviceStatusMap, credentia
                     deviceCounters[portName] = { inOctets: currentIn, outOctets: currentOut, time: now };
                 }
 
-                // Topologi Override
+                // Topologi Override (Cerdas: cocokkan format Gi1/0/1, GigabitEthernet, 1, maupun ifAlias)
                 for (const dev of validDevices) {
-                    if (dev.SWITCH && dev.SWITCH.toLowerCase() === (sw.HOSTNAME || '').toLowerCase() && dev.PORT === portName) {
-                        const childStatus = deviceStatusMap.get(dev.PID);
-                        if (portStatus.status === 'DOWN' && childStatus === 'UP') {
-                            deviceStatusMap.set(dev.PID, 'DOWN');
+                    const isSwitchMatch = dev.SWITCH && (
+                        dev.SWITCH.toLowerCase() === (sw.HOSTNAME || '').toLowerCase() ||
+                        dev.SWITCH.toLowerCase() === (sw.PID || '').toLowerCase() ||
+                        dev.SWITCH === sw.IP
+                    );
+
+                    if (isSwitchMatch) {
+                        const isMatch = isPortMatching(
+                            dev.PORT,
+                            portName,
+                            portStatus.ifDescr,
+                            portStatus.alias,
+                            dev.HOSTNAME || dev.PID
+                        );
+
+                        if (isMatch) {
+                            const childStatus = deviceStatusMap.get(dev.PID);
+                            if (portStatus.status === 'DOWN' && childStatus === 'UP') {
+                                deviceStatusMap.set(dev.PID, 'DOWN');
+                            }
                         }
                     }
                 }

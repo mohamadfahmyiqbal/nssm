@@ -36,11 +36,11 @@ export default function DashboardTopology() {
         const handleStatusUpdate = (payload) => {
             setNodes((prevNodes) =>
                 prevNodes.map((node) => {
-                    if (
-                        (payload.pid && (node.id === payload.pid || node.data.pid === payload.pid)) ||
-                        (payload.ip && node.data.ip === payload.ip) ||
-                        (payload.hostname && (node.data.label === payload.hostname || node.data.name === payload.hostname))
-                    ) {
+                    const isMatch = payload.pid
+                        ? (node.id === payload.pid || node.data.pid === payload.pid)
+                        : (payload.ip && node.data.ip === payload.ip) || (payload.hostname && (node.data.label === payload.hostname || node.data.name === payload.hostname));
+
+                    if (isMatch) {
                         const snmp = payload.snmpData || {};
                         const nvr = payload.nvrData || {};
                         const nvrInfo = nvr.info || {};
@@ -61,6 +61,7 @@ export default function DashboardTopology() {
                                 trafficOut: snmp.trafficOut || node.data.trafficOut,
                                 firmware: snmp.firmware || nvrInfo.firmware || node.data.firmware,
                                 uptime: snmp.uptime || nvrInfo.uptime || node.data.uptime,
+                                rca: payload.rca !== undefined ? payload.rca : node.data.rca,
                                 // Nested objects
                                 ...(payload.nvrData ? { nvrData: payload.nvrData } : {}),
                                 ...(payload.snmpData ? { snmpData: payload.snmpData } : {})

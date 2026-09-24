@@ -1,7 +1,7 @@
 import snmp from 'net-snmp';
 import dgram from 'dgram';
 
-const walkSubtree = (session, oid) => {
+export const walkSubtree = (session, oid) => {
     return new Promise((resolve) => {
         let results = {};
         session.subtree(oid, 48, (row) => {
@@ -61,26 +61,46 @@ export const getSwitchPortStatus = async (ip, credential) => {
     });
     
     try {
-        const [ifNames, ifTypes, ifInHC, ifOutHC, ifIn32, ifOut32, ifInErrors, ifOutErrors, ifStatuses] = await Promise.all([
-            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.1'),
-            walkSubtree(session, '1.3.6.1.2.1.2.2.1.3'),
-            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.6'),
-            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.10'),
-            walkSubtree(session, '1.3.6.1.2.1.2.2.1.10'),
-            walkSubtree(session, '1.3.6.1.2.1.2.2.1.16'),
-            walkSubtree(session, '1.3.6.1.2.1.2.2.1.14'),
-            walkSubtree(session, '1.3.6.1.2.1.2.2.1.20'),
-            walkSubtree(session, '1.3.6.1.2.1.2.2.1.8')
+        const [ifNames, ifDescrs, ifAliases, ifAdminStatuses, ifTypes, ifInHC, ifOutHC, ifIn32, ifOut32, ifInErrors, ifOutErrors, ifStatuses] = await Promise.all([
+            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.1'),  // ifName (e.g. Gi1/0/1, Po40)
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.2'),     // ifDescr (e.g. GigabitEthernet1/0/1)
+            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.18'), // ifAlias (e.g. To-Port3-FortiGate)
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.7'),     // ifAdminStatus (1=up, 2=down)
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.3'),     // ifType
+            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.6'),  // ifHCInOctets
+            walkSubtree(session, '1.3.6.1.2.1.31.1.1.1.10'), // ifHCOutOctets
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.10'),    // ifInOctets
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.16'),    // ifOutOctets
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.14'),    // ifInErrors
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.20'),    // ifOutErrors
+            walkSubtree(session, '1.3.6.1.2.1.2.2.1.8')      // ifOperStatus (1=up, 2=down)
         ]);
 
         const ports = {};
         Object.keys(ifNames).forEach(idx => {
             const inVal = ifInHC[idx] || ifIn32[idx] || 0;
             const outVal = ifOutHC[idx] || ifOut32[idx] || 0;
-            const statusVal = ifStatuses[idx];
+            const operStatus = ifStatuses[idx];
+            const adminStatus = ifAdminStatuses[idx];
+            const portName = ifNames[idx].toString();
+            const portDescr = ifDescrs[idx] ? ifDescrs[idx].toString() : portName;
+            const portAlias = ifAliases[idx] ? ifAliases[idx].toString() : '';
 
-            ports[ifNames[idx].toString()] = {
-                status: (statusVal === 1) ? 'UP' : 'DOWN',
+            let detailedStatus = 'DOWN';
+            if (adminStatus === 2) {
+                detailedStatus = 'DISABLED';
+            } else if (operStatus === 1) {
+                detailedStatus = 'CONNECTED';
+            } else {
+                detailedStatus = 'NOT_CONNECTED';
+            }
+
+            ports[portName] = {
+                status: (operStatus === 1) ? 'UP' : 'DOWN',
+                detailedStatus,
+                alias: portAlias,
+                ifDescr: portDescr,
+                ifName: portName,
                 rawIn: inVal,
                 rawOut: outVal,
                 inErrors: ifInErrors[idx] || 0,
@@ -92,7 +112,7 @@ export const getSwitchPortStatus = async (ip, credential) => {
         return { isAlive: true, ports };
     } catch (e) {
         session.close();
-        return [];
+        return { isAlive: false, ports: {} };
     }
 };
 

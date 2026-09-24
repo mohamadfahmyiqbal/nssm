@@ -2,6 +2,9 @@ import TopologyNode from '../models/TopologyNode.js';
 import TopologyEdge from '../models/TopologyEdge.js';
 import TopologyDrawing from '../models/TopologyDrawing.js';
 import Setting from '../models/Setting.js';
+import Network from '../models/Network.js';
+import Asset from '../models/Asset.js';
+import { performRootCauseAnalysis } from '../services/rcaService.js';
 
 export const getTopology = async (req, res) => {
     try {
@@ -193,6 +196,33 @@ export const deleteTopologyDrawing = async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Error deleteTopologyDrawing:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Ambil Laporan Root Cause Analysis (RCA) Terkini
+export const getRootCauseAnalysis = async (req, res) => {
+    try {
+        const [devices, assets] = await Promise.all([
+            Network.findAll(),
+            Asset.findAll()
+        ]);
+
+        const validDevices = devices.filter(d => d.IP && d.IP !== '-');
+        const statusMap = new Map();
+        
+        assets.forEach(a => {
+            statusMap.set(a.PID, a.STATUS || 'DOWN');
+        });
+
+        const rcaReport = performRootCauseAnalysis(validDevices, statusMap);
+
+        return res.status(200).json({
+            success: true,
+            data: rcaReport
+        });
+    } catch (error) {
+        console.error('❌ Error getRootCauseAnalysis:', error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };

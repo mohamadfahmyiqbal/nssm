@@ -12,12 +12,24 @@ export default {
           card: '#111827',
           border: '#1f2937',
           accent: '#3b82f6',
+        },
+        // Enterprise Operational Status Palette
+        status: {
+          up: '#10B981',        // Normal / Operational
+          warning: '#F59E0B',   // Warning / Degraded
+          down: '#EF4444',      // Critical / Down
+          offline: '#6B7280',   // Unmanaged / Offline
         }
       },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
+      },
       boxShadow: {
-        'glow-green': '0 0 15px rgba(34, 197, 94, 0.5)',
-        'glow-amber': '0 0 15px rgba(245, 158, 11, 0.5)',
-        'glow-red': '0 0 15px rgba(244, 63, 94, 0.6)',
+        'glow-green': '0 0 15px rgba(16, 185, 129, 0.45)',
+        'glow-amber': '0 0 15px rgba(245, 158, 11, 0.45)',
+        'glow-red': '0 0 15px rgba(239, 68, 68, 0.55)',
+        'glow-gray': '0 0 15px rgba(107, 114, 128, 0.3)',
       }
     },
   },

@@ -61,5 +61,37 @@ export const formatHardwareStatus = (key, val) => {
     if (key === 'raidStatus') {
         return (val === '0' || val === '1') ? 'Normal (Healthy)' : (val === '2' ? 'Degraded/Rebuild' : val);
     }
+    // Schneider / APC UPS Status
+    if (key === 'batteryStatus') {
+        return val === '2' ? 'Normal (Good)' : (val === '3' ? 'Low Battery' : (val === '1' ? 'Unknown' : val));
+    }
+    if (key === 'batteryReplace') {
+        return val === '1' ? 'OK (No Replace)' : (val === '2' ? 'Replace Battery Immediately' : val);
+    }
+    if (key === 'outputStatus') {
+        const outputStates = {
+            '1': 'Unknown',
+            '2': 'On Line (Inverter)',
+            '3': 'On Battery',
+            '4': 'On Boost',
+            '5': 'Timed Sleeping',
+            '6': 'Software Bypass',
+            '7': 'Off',
+            '8': 'Rebooting',
+            '9': 'Switched Bypass',
+            '10': 'Hardware Failure Bypass'
+        };
+        return outputStates[val] || val;
+    }
+    // APC ATS (Automatic Transfer Switch) Status
+    if (key === 'selectedSource') {
+        return val === '1' ? 'Source A (Primary)' : (val === '2' ? 'Source B (Secondary)' : val);
+    }
+    if (key === 'powerSourceAStatus' || key === 'powerSourceBStatus') {
+        return val === '1' ? 'Normal / OK' : (val === '2' ? 'Out of Range' : val);
+    }
+    if (key === 'redundancyStatus') {
+        return val === '1' ? 'Redundant (A & B OK)' : (val === '2' ? 'Redundancy Lost' : val);
+    }
     return val;
 };

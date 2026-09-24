@@ -110,7 +110,7 @@ export const useTopologyLayout = ({
                 });
 
                 setNodes(finalNodes);
-                setEdges(Array.isArray(rawEdges) ? rawEdges : []);
+                setEdges(Array.isArray(rawEdges) ? rawEdges.map(e => ({ ...e, type: 'draggable' })) : []);
                 setSavedLayoutConfig({ nodes: rawNodes, edges: rawEdges });
 
                 if (rfInstance) {

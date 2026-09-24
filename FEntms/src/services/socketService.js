@@ -81,6 +81,23 @@ class SocketService {
     }
 
     /**
+     * Subscribe event laporan RCA real-time
+     */
+    onRcaReport(callback) {
+        if (!this.socket) this.connect();
+        this.socket.on('network:rca_report', callback);
+    }
+
+    /**
+     * Unsubscribe event laporan RCA
+     */
+    offRcaReport(callback) {
+        if (this.socket) {
+            this.socket.off('network:rca_report', callback);
+        }
+    }
+
+    /**
      * Putus koneksi WebSocket (saat Logout)
      */
     disconnect() {

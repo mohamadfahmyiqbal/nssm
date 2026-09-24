@@ -1,6 +1,6 @@
 const snmp = require("net-snmp");
 
-const targetIP = "172.17.0.201"; // IP Switch Cisco C9200L
+const targetIP = "172.17.225.5"; // IP Switch Cisco C9200L
 
 const options = {
     port: 161,

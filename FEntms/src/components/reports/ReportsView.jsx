@@ -1,11 +1,11 @@
-// src/components/reports/ReportsView.jsx
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { showToast } from '../../utils/swal';
 import { FileSpreadsheet, FileText, ShieldCheck, Activity, Terminal } from 'lucide-react';
 import api from '../../services/api';
+import { generateIncidentReportPDF } from '../../utils/incidentReportGenerator';
 
 export default function ReportsView() {
     const [activeTab, setActiveTab] = useState('sla'); // 'sla' | 'logs'
@@ -109,7 +109,7 @@ export default function ReportsView() {
                     item.device, item.ip, item.vendor, item.sla, item.incidents, item.downtime, item.status
                 ]);
 
-                doc.autoTable({
+                autoTable(doc, {
                     startY: 28,
                     head: tableHeaders,
                     body: tableRows,
@@ -133,7 +133,7 @@ export default function ReportsView() {
                     `${item.LATENCY} ms`
                 ]);
 
-                doc.autoTable({
+                autoTable(doc, {
                     startY: 28,
                     head: tableHeaders,
                     body: tableRows,
@@ -194,7 +194,20 @@ export default function ReportsView() {
                 </div>
 
                 {/* Action Export Buttons */}
-                <div className="flex items-center gap-3 font-mono text-xs">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                    <button
+                        onClick={() => generateIncidentReportPDF({
+                            hostname: 'PILIH_DARI_DAFTAR',
+                            complaint: 'Laporan insiden / anomali perangkat IT',
+                            sourceType: 'monitoring'
+                        })}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-950/60 border border-purple-600/50 text-purple-300 rounded-xl hover:bg-purple-900/60 font-bold transition-all shadow-lg"
+                        title="Unduh Formulir Template Kosong Laporan Penanganan Gangguan"
+                    >
+                        <FileText className="w-4 h-4 text-purple-400" />
+                        <span>FORM GANGGUAN PDF</span>
+                    </button>
+
                     <button
                         onClick={handleExportExcel}
                         className="flex items-center gap-2 px-3.5 py-2 bg-emerald-950/50 border border-emerald-700/60 text-emerald-400 rounded-xl hover:bg-emerald-900/60 font-bold transition-all shadow-lg"

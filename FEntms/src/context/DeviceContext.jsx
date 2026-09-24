@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import {
+import api, {
     getAllDevicesFromDB,
     createDeviceInDB,
     updateDeviceInDB,
@@ -22,6 +22,38 @@ export const initialDefaultDevices = [
 export function DeviceProvider({ children }) {
     const [devices, setDevices] = useState([]);
     const [floorplansList, setFloorplansList] = useState([]);
+    const [disabledPollingMap, setDisabledPollingMap] = useState({});
+
+    const refreshDisabledPolling = async () => {
+        try {
+            const res = await api.get('/settings/disabled_polling_devices');
+            if (res.data?.success && res.data?.data?.value) {
+                setDisabledPollingMap(res.data.data.value || {});
+            }
+        } catch (err) {
+            console.log('Failed fetching disabled polling list.');
+        }
+    };
+
+    const toggleDevicePolling = async (devKey) => {
+        if (!devKey) return;
+        setDisabledPollingMap((prev) => {
+            const isCurrentlyDisabled = !!prev[devKey];
+            const updated = { ...prev };
+            if (isCurrentlyDisabled) {
+                delete updated[devKey];
+            } else {
+                updated[devKey] = true;
+            }
+
+            api.post('/settings', {
+                key: 'disabled_polling_devices',
+                value: updated
+            }).catch(e => console.error('Failed saving disabled polling setting:', e));
+
+            return updated;
+        });
+    };
 
     const refreshFloorplans = async () => {
         try {
@@ -52,6 +84,7 @@ export function DeviceProvider({ children }) {
                         mac: item.MAC ? String(item.MAC).trim() : (item.mac || '-'),
                         vendor: item.VENDOR || item.vendor || item.SEGMENT || 'Generic',
                         type: item.TYPE || item.type || 'server',
+                        port: item.PORT ? String(item.PORT).trim() : (item.port || '-'),
                         pingMethod: item.PING_METHOD || item.pingMethod || 'tcp',
                         snmpVersion: item.SNMP_VERSION || item.snmpVersion || 'v2c',
                         snmpPort: item.SNMP_PORT || item.snmpPort || '161',
@@ -65,7 +98,10 @@ export function DeviceProvider({ children }) {
                         floor: item.floor || defaultFloor,
                         location: item.location || 'Belum ditentukan',
                         polled: new Date().toLocaleTimeString('id-ID'),
-                        ...(item.nvrData || {})
+                        snmpData: item.snmpData || undefined,
+                        vendorMetrics: item.vendorMetrics || undefined,
+                        info: item.info || item.vendorMetrics?.info || undefined,
+                        ...(item.nvrData ? { nvrData: item.nvrData } : {})
                     };
                 });
                 setDevices(formatted);
@@ -78,6 +114,7 @@ export function DeviceProvider({ children }) {
     useEffect(() => {
         refreshDevices();
         refreshFloorplans();
+        refreshDisabledPolling();
 
         // Integrasi Socket.IO untuk Live Data Status
         const handleStatusUpdate = (payload) => {
@@ -91,6 +128,7 @@ export function DeviceProvider({ children }) {
                         return {
                             ...dev,
                             status: payload.status,
+                            rca: payload.rca !== undefined ? payload.rca : dev.rca,
                             polled: new Date().toLocaleTimeString('id-ID'), // Update waktu polling terakhir
                             ...(payload.nvrData || {}),
                             ...(payload.snmpData ? { snmpData: payload.snmpData } : {})
@@ -206,6 +244,7 @@ export function DeviceProvider({ children }) {
                 segment: newDev.floor || 'DEFAULT',
                 type: newDev.type,
                 vendor: newDev.vendor,
+                port: newDev.port || null,
                 pingMethod: newDev.pingMethod,
                 snmpVersion: newDev.snmpVersion,
                 snmpPort: newDev.snmpPort,
@@ -233,6 +272,7 @@ export function DeviceProvider({ children }) {
             mac: newDev.mac || '-',
             vendor: newDev.vendor || 'Generic',
             type: newDev.type || 'server',
+            port: newDev.port || '-',
             pingMethod: newDev.pingMethod || 'tcp',
             snmpVersion: newDev.snmpVersion || 'v2c',
             snmpPort: newDev.snmpPort || '161',
@@ -278,10 +318,16 @@ export function DeviceProvider({ children }) {
     };
 
     const updateDevice = async (targetIdOrPid, updatedFields) => {
+        const newHostname = updatedFields.hostname || updatedFields.name;
+        const normalizedFields = {
+            ...updatedFields,
+            ...(newHostname ? { name: newHostname, hostname: newHostname } : {})
+        };
+
         setDevices((prev) =>
             prev.map((d) => {
                 if (d.id === targetIdOrPid || d.PID === targetIdOrPid) {
-                    return { ...d, ...updatedFields };
+                    return { ...d, ...normalizedFields };
                 }
                 return d;
             })
@@ -296,6 +342,7 @@ export function DeviceProvider({ children }) {
                 vendor: updatedFields.vendor,
                 segment: updatedFields.floor || updatedFields.segment,
                 type: updatedFields.type,
+                port: updatedFields.port,
                 pingMethod: updatedFields.pingMethod,
                 snmpVersion: updatedFields.snmpVersion,
                 snmpPort: updatedFields.snmpPort,
@@ -325,6 +372,9 @@ export function DeviceProvider({ children }) {
                 removeMultipleDevices,
                 updateDevice,
                 refreshDevices,
+                disabledPollingMap,
+                toggleDevicePolling,
+                refreshDisabledPolling,
             }}
         >
             {children}

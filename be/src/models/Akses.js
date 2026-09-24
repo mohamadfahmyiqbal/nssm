@@ -4,9 +4,9 @@ import sequelize from '../config/database.js';
 
 const Akses = sequelize.define('Akses', {
     NIK: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING,
         primaryKey: true,
-        autoIncrement: true,
+        autoIncrement: false,
         allowNull: false,
     },
     NAMA: {
@@ -32,7 +32,7 @@ const Akses = sequelize.define('Akses', {
 }, {
     tableName: 'Akses',
     schema: 'dbo',
-    timestamps: true, // Otomatis mengelola createdAt & updatedAt
+    timestamps: false,
 });
 
 export default Akses;

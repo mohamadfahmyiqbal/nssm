@@ -29,89 +29,72 @@ export default function TopologyHeader({
     onDeleteDrawing
 }) {
     return (
-        <div className="flex flex-col gap-2.5 bg-slate-900/40 p-3.5 rounded-2xl border border-slate-700/50 backdrop-blur-xl shadow-lg relative z-50">
-            {/* ROW 1: HEADER INFO & DRAWING MANAGEMENT */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-2.5">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                        <Network className="w-5 h-5" />
+        <div className="bg-slate-900/60 p-2.5 rounded-2xl border border-slate-800/80 backdrop-blur-xl shadow-lg flex flex-wrap items-center justify-between gap-3 relative z-30">
+            {/* MULTI-DRAWING SELECTOR & CONTROLS */}
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-1.5 shadow-inner">
+                    <div className="p-1 bg-indigo-600/20 border border-indigo-500/40 rounded-lg text-indigo-400">
+                        <Layers className="w-3.5 h-3.5" />
                     </div>
-                    <div>
-                        <h2 className="text-sm font-bold tracking-wider text-slate-100 uppercase font-mono flex items-center gap-2">
-                            NETWORK TOPOLOGY
-                        </h2>
-                        <p className="text-[11px] text-slate-400">
-                            Visualisasi hirarki jaringan & status node perangkat real-time
-                        </p>
+                    <span className="font-mono text-xs font-bold text-slate-300">DRAWING:</span>
+                    <div className="flex items-center gap-1">
+                        <select
+                            value={activeDrawing?.id || ''}
+                            onChange={(e) => onSelectDrawing && onSelectDrawing(Number(e.target.value))}
+                            className="bg-slate-900 border border-slate-700 text-amber-400 font-bold font-mono text-xs rounded-lg px-2.5 py-1 cursor-pointer outline-none hover:border-amber-500/60 transition-colors max-w-[200px] sm:max-w-[260px] truncate"
+                        >
+                            {drawingsList.map((d, idx) => (
+                                <option key={`${d.id}-${idx}`} value={d.id}>
+                                    {d.type === 'MASTER' ? '⭐ [MASTER] ' : '📄 [DETAIL] '} {d.name}
+                                </option>
+                            ))}
+                        </select>
+                        {activeDrawing && onRenameDrawing && (
+                            <button
+                                onClick={onRenameDrawing}
+                                className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors"
+                                title="Rename Drawing"
+                            >
+                                <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {/* MULTI-DRAWING SELECTOR & CONTROLS */}
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-1.5 shadow-inner">
-                        <div className="p-1 bg-indigo-600/20 border border-indigo-500/40 rounded-lg text-indigo-400">
-                            <Layers className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="font-mono text-xs font-bold text-slate-300">DRAWING:</span>
-                        <div className="flex items-center gap-1">
-                            <select
-                                value={activeDrawing?.id || ''}
-                                onChange={(e) => onSelectDrawing && onSelectDrawing(Number(e.target.value))}
-                                className="bg-slate-900 border border-slate-700 text-amber-400 font-bold font-mono text-xs rounded-lg px-2.5 py-1 cursor-pointer outline-none hover:border-amber-500/60 transition-colors max-w-[220px] truncate"
-                            >
-                                {drawingsList.map((d, idx) => (
-                                    <option key={`${d.id}-${idx}`} value={d.id}>
-                                        {d.type === 'MASTER' ? '⭐ [MASTER] ' : '📄 [DETAIL] '} {d.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {activeDrawing && onRenameDrawing && (
-                                <button
-                                    onClick={onRenameDrawing}
-                                    className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors"
-                                    title="Rename Drawing"
-                                >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 bg-slate-950/40 border border-slate-800/80 rounded-xl p-1">
-                        <button
-                            onClick={onCreateNewDrawing}
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                            title="Tambah Drawing Topologi Baru"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">New Drawing</span>
-                        </button>
-                        <button
-                            onClick={onDuplicateDrawing}
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold bg-slate-800/80 text-slate-300 border border-slate-700/60 rounded-lg hover:bg-slate-700 hover:text-white transition-all"
-                            title="Duplikat Drawing Aktif"
-                        >
-                            <Copy className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Copy</span>
-                        </button>
-                        <button
-                            onClick={onDeleteDrawing}
-                            disabled={drawingsList.length <= 1}
-                            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
-                                drawingsList.length <= 1 
-                                    ? 'bg-slate-800/30 text-slate-600 border border-slate-800/40 cursor-not-allowed'
-                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-600 hover:text-white'
-                            }`}
-                            title="Hapus Drawing Aktif Ini"
-                        >
-                            <Trash className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
+                <div className="flex items-center gap-1 bg-slate-950/50 border border-slate-800 rounded-xl p-1">
+                    <button
+                        onClick={onCreateNewDrawing}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                        title="Tambah Drawing Topologi Baru"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">New Drawing</span>
+                    </button>
+                    <button
+                        onClick={onDuplicateDrawing}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold bg-slate-800/80 text-slate-300 border border-slate-700/60 rounded-lg hover:bg-slate-700 hover:text-white transition-all"
+                        title="Duplikat Drawing Aktif"
+                    >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Copy</span>
+                    </button>
+                    <button
+                        onClick={onDeleteDrawing}
+                        disabled={drawingsList.length <= 1}
+                        className={`flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                            drawingsList.length <= 1 
+                                ? 'bg-slate-800/30 text-slate-600 border border-slate-800/40 cursor-not-allowed'
+                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-600 hover:text-white'
+                        }`}
+                        title="Hapus Drawing Aktif Ini"
+                    >
+                        <Trash className="w-3.5 h-3.5" />
+                    </button>
                 </div>
             </div>
 
-            {/* ROW 2: SEARCH & CANVAS CONTROLS */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* SEARCH & CANVAS CONTROLS */}
+            <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
                     <div className="flex items-center bg-slate-950/50 border border-slate-700/50 rounded-xl px-3 py-1.5 focus-within:border-blue-500/50 focus-within:bg-slate-900 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 w-64 backdrop-blur-sm">
                         <Search className="w-3.5 h-3.5 text-slate-400 mr-2" />

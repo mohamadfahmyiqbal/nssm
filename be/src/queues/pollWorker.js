@@ -3,13 +3,15 @@ import PQueue from 'p-queue';
 import Network from '../models/Network.js';
 import Asset from '../models/Asset.js';
 import Setting from '../models/Setting.js';
+import TopologyDrawing from '../models/TopologyDrawing.js';
 import DeviceLog from '../models/DeviceLog.js';
 import { checkPing } from '../services/pingService.js';
 import { checkSnmp, fetchNvrData, fetchDeviceSnmpData } from '../services/snmpV3Service.js';
 import { resolveVendorProfile, fetchVendorMetrics } from '../services/vendorSnmpService.js';
 import { inferSwitchStatus } from '../services/topologyService.js';
+import { performRootCauseAnalysis } from '../services/rcaService.js';
 import { sendTeamsAlert } from '../services/teamsService.js';
-import { globalNvrCache } from '../utils/cache.js';
+import { globalNvrCache, globalSnmpCache, globalMetricsCache } from '../utils/cache.js';
 
 // Global Memory Map untuk kalkulasi Delta Traffic
 const trafficCounterMap = new Map();
@@ -27,24 +29,60 @@ export const processDevicePolling = async (io) => {
 
         if (validDevices.length === 0) return;
 
-        // Ambil konfigurasi label topologi terlebih dahulu
-        const topoSetting = await Setting.findOne({ where: { key: 'topology_layout' } });
-        let topoLayout = {};
-        if (topoSetting && topoSetting.value) {
-            try { topoLayout = JSON.parse(topoSetting.value); } catch (e) { }
+        // 1. Kumpulkan semua node ID unik yang terpasang di drawing topologi
+        const activeTopoIds = new Set();
+        const activeTopoIps = new Set();
+        const activeTopoHosts = new Set();
+
+        try {
+            const allDrawings = await TopologyDrawing.findAll();
+            if (allDrawings && allDrawings.length > 0) {
+                allDrawings.forEach(dw => {
+                    const nodes = dw.nodes || {};
+                    Object.keys(nodes).forEach(key => {
+                        if (key.startsWith('group-') || nodes[key]?.isGroup) return;
+                        const cleanKey = String(key).trim().toLowerCase();
+                        activeTopoIds.add(cleanKey);
+                        if (nodes[key]?.ip) activeTopoIps.add(String(nodes[key].ip).trim().toLowerCase());
+                        if (nodes[key]?.label) activeTopoHosts.add(String(nodes[key].label).trim().toLowerCase());
+                        if (nodes[key]?.hostname) activeTopoHosts.add(String(nodes[key].hostname).trim().toLowerCase());
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Gagal membaca TopologyDrawings untuk filter polling:', e.message);
         }
 
-        // Filter validDevices agar HANYA yang ada di topologi yang di-polling (jika topologi terkonfigurasi)
-        const hasLayout = topoLayout && Object.keys(topoLayout).length > 0;
-        if (hasLayout) {
-            validDevices = validDevices.filter((dev) => 
-                topoLayout[dev.PID] || 
-                topoLayout[dev.IP] || 
-                topoLayout[dev.HOSTNAME] ||
-                (dev.HOSTNAME && topoLayout[dev.HOSTNAME.toLowerCase()]) ||
-                Object.keys(topoLayout).some(k => (dev.PID && k.includes(dev.PID)) || (dev.HOSTNAME && k.toLowerCase().includes(dev.HOSTNAME.toLowerCase())))
-            );
-        }
+        // Filter validDevices: HANYA polling perangkat yang benar-benar ada di drawing topologi aktif
+        validDevices = validDevices.filter((dev) => {
+            const pid = String(dev.PID || dev.id || '').trim().toLowerCase();
+            const ip = String(dev.IP || dev.ip || '').trim().toLowerCase();
+            const host = String(dev.HOSTNAME || dev.hostname || dev.label || dev.name || '').trim().toLowerCase();
+
+            return (pid && activeTopoIds.has(pid)) || 
+                   (ip && (activeTopoIds.has(ip) || activeTopoIps.has(ip))) ||
+                   (host && (activeTopoIds.has(host) || activeTopoHosts.has(host)));
+        });
+
+        // Ambil daftar perangkat yang dinonaktifkan polling-nya (Disabled Polling List)
+        let disabledPolling = {};
+        try {
+            const disabledSetting = await Setting.findOne({ where: { key: 'disabled_polling_devices' } });
+            if (disabledSetting && disabledSetting.value) {
+                disabledPolling = typeof disabledSetting.value === 'string' ? JSON.parse(disabledSetting.value) : disabledSetting.value;
+            }
+        } catch (e) {}
+
+        // Saring keluar perangkat yang polling-nya di-pause / dinonaktifkan
+        validDevices = validDevices.filter((dev) => {
+            const pid = dev.PID || dev.id;
+            const ip = dev.IP || dev.ip;
+            const host = dev.HOSTNAME || dev.hostname;
+            if (disabledPolling[pid] || disabledPolling[ip] || disabledPolling[host]) {
+                return false;
+            }
+            return true;
+        });
 
         if (validDevices.length === 0) return;
 
@@ -92,6 +130,7 @@ export const processDevicePolling = async (io) => {
                 const profile = resolveVendorProfile(dev.VENDOR, dev.TYPE, dev.HOSTNAME, customProfiles);
                 const isCctv = profile.category === 'nvr' || profile.isNvr;
                 const isSwitch = profile.category === 'switch' || profile.isSwitch;
+                const isAp = profile.category === 'ap' || profile.isAp;
 
                 const methodOverride = pollingOverrides[dev.IP] || pollingOverrides[dev.PID];
                 const finalMethod = dev.PING_METHOD ? dev.PING_METHOD.toLowerCase() : (methodOverride ? methodOverride : profile.defaultMethod);
@@ -121,7 +160,7 @@ export const processDevicePolling = async (io) => {
                 } else {
                     pingResult = await checkPing(dev.IP, 80, 2000, 'tcp');
                     // Fallback: Hanya jika SNMP tidak dimatikan dan TCP gagal
-                    if (!pingResult.isAlive && !isSnmpDisabled && (isCctv || isSwitch || hasExplicitSnmp || dev.SNMP_COMMUNITY)) {
+                    if (!pingResult.isAlive && !isSnmpDisabled && (isCctv || isSwitch || isAp || hasExplicitSnmp || dev.SNMP_COMMUNITY)) {
                         const snmpPing = await checkSnmp(dev.IP, devCreds);
                         if (snmpPing.isAlive) {
                             pingResult = snmpPing;
@@ -161,6 +200,8 @@ export const processDevicePolling = async (io) => {
                                 ports: vendorMetrics.ports || [],
                                 ...vendorMetrics.resources
                             };
+                            globalSnmpCache.set(String(dev.PID).trim(), snmpData);
+                            globalMetricsCache.set(String(dev.PID).trim(), vendorMetrics);
                         }
                     }
                 }
@@ -189,10 +230,17 @@ export const processDevicePolling = async (io) => {
         // Pass 2: INFER SWITCH STATUS (Topological Override) pada Map memory
         await inferSwitchStatus(validDevices, deviceStatusMap, credentials, io, trafficCounterMap);
 
+        // Pass 2.5: Automated Root Cause Analysis (RCA Engine)
+        const rcaReport = performRootCauseAnalysis(validDevices, deviceStatusMap);
+        if (rcaReport.rootCauses.length > 0) {
+            console.log(`🔥 [RCA Engine] Terdeteksi ${rcaReport.rootCauses.length} Root Cause Failure(s) berdampak pada ${rcaReport.summary.cascadingDownCount} perangkat turunan.`);
+        }
+
         // Pass 3: Simpan final status (hasil override) ke DB dan emit ke frontend
         for (const res of rawResults) {
             const { dev, finalMethod, pingResult, nvrData, snmpData } = res;
             const finalStatus = deviceStatusMap.get(dev.PID);
+            const rcaInfo = rcaReport.deviceRcaMap[dev.PID] || null;
 
             const [asset, created] = await Asset.findOrCreate({
                 where: { PID: dev.PID },
@@ -219,7 +267,7 @@ export const processDevicePolling = async (io) => {
                 if (finalStatus === 'DOWN' || finalStatus === 'UP') {
                     const isNotifEnabled = notificationPrefs[dev.PID] !== false && notificationPrefs[dev.HOSTNAME] !== false;
                     if (isNotifEnabled) {
-                        sendTeamsAlert(dev, new Date().toLocaleString(), finalStatus);
+                        sendTeamsAlert(dev, new Date().toLocaleString(), finalStatus, rcaInfo);
                     } else {
                         console.log(`🔕 Notifikasi ${finalStatus} untuk ${dev.HOSTNAME} (${dev.PID}) diskip.`);
                     }
@@ -244,9 +292,14 @@ export const processDevicePolling = async (io) => {
                     latency: pingResult.ms,
                     updatedAt: new Date().toISOString(),
                     nvrData: nvrData,
-                    snmpData: snmpData
+                    snmpData: snmpData,
+                    rca: rcaInfo
                 });
             }
+        }
+
+        if (io) {
+            io.emit('network:rca_report', rcaReport);
         }
 
         console.log(`✅ [Cron Engine] Selesai polling ${validDevices.length} perangkat pada ${new Date().toLocaleTimeString('id-ID')}\n`);

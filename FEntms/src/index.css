@@ -21,6 +21,12 @@ body {
   z-index: 100 !important;
 }
 
+/* Pastikan layer Edge Labels & Interaktif Button selalu berada di atas garis */
+.react-flow__edgelabel-renderer {
+  z-index: 200 !important;
+  pointer-events: none;
+}
+
 .react-flow__edge-path {
   stroke-linecap: round;
 }
@@ -28,4 +34,24 @@ body {
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #38bdf8 !important;
   stroke-width: 3px !important;
+}
+
+/* Animasi Jalur Terhubung Device Terpilih (Berkedip & Berwarna Merah) */
+@keyframes edge-pulse-red {
+  0%, 100% {
+    stroke: #ef4444;
+    filter: drop-shadow(0 0 4px #ef4444);
+    opacity: 1;
+  }
+  50% {
+    stroke: #ff7878;
+    filter: drop-shadow(0 0 12px #ff2222) drop-shadow(0 0 20px #ef4444);
+    opacity: 0.35;
+  }
+}
+
+.edge-highlight-selected-path {
+  stroke: #ef4444 !important;
+  stroke-width: 3.5px !important;
+  animation: edge-pulse-red 0.9s infinite ease-in-out !important;
 }

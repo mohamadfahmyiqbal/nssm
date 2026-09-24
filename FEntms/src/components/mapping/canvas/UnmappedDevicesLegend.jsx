@@ -7,22 +7,19 @@ export default function UnmappedDevicesLegend({ currentDevices = [], nodes = [],
     const [isOpen, setIsOpen] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Mapping status helper (berbasis ID unik & PID)
-    const mappedDeviceMap = useMemo(() => {
-        const map = new Map();
+    // Mapping status helper strictly berbasis ID unik / PID node
+    const mappedNodeIdSet = useMemo(() => {
+        const idSet = new Set();
         nodes.forEach(n => {
             const nodeId = String(n.id || '').trim().toLowerCase();
             const dataId = String(n.data?.id || '').trim().toLowerCase();
-            const label = String(n.data?.label || '').trim().toLowerCase();
-
-            if (nodeId) map.set(nodeId, n);
-            if (dataId) map.set(dataId, n);
-            if (label && !map.has(label)) map.set(label, n);
+            if (nodeId) idSet.add(nodeId);
+            if (dataId) idSet.add(dataId);
         });
-        return map;
+        return idSet;
     }, [nodes]);
 
-    // Pisahkan perangkat yang belum dan sudah ada di canvas
+    // Pisahkan perangkat yang belum dan sudah ada di canvas strictly berbasis ID unik / PID
     const { unmappedDevices, mappedDevices } = useMemo(() => {
         const unmapped = [];
         const mapped = [];
@@ -30,14 +27,16 @@ export default function UnmappedDevicesLegend({ currentDevices = [], nodes = [],
         (allDevices || []).forEach(d => {
             const devPid = String(d.PID || '').trim().toLowerCase();
             const devId = String(d.id || '').trim().toLowerCase();
-            const devName = String(d.name || d.hostname || '').trim().toLowerCase();
 
-            // Prioritaskan pencocokan via PID/ID unik
-            const matchedNode = (devPid && mappedDeviceMap.get(devPid)) ||
-                                (devId && mappedDeviceMap.get(devId)) ||
-                                (devName && mappedDeviceMap.get(devName));
+            const isAlreadyOnCanvas = (devPid && mappedNodeIdSet.has(devPid)) ||
+                                      (devId && mappedNodeIdSet.has(devId));
 
-            if (matchedNode) {
+            if (isAlreadyOnCanvas) {
+                const matchedNode = nodes.find(n => {
+                    const nId = String(n.id || '').trim().toLowerCase();
+                    const nDataId = String(n.data?.id || '').trim().toLowerCase();
+                    return (devPid && (nId === devPid || nDataId === devPid)) || (devId && (nId === devId || nDataId === devId));
+                });
                 mapped.push({ ...d, canvasNode: matchedNode });
             } else {
                 unmapped.push(d);
@@ -45,7 +44,7 @@ export default function UnmappedDevicesLegend({ currentDevices = [], nodes = [],
         });
 
         return { unmappedDevices: unmapped, mappedDevices: mapped };
-    }, [allDevices, mappedDeviceMap]);
+    }, [allDevices, mappedNodeIdSet, nodes]);
 
     const filterHelper = (list) => {
         if (!searchQuery.trim()) return list;
@@ -109,32 +108,41 @@ export default function UnmappedDevicesLegend({ currentDevices = [], nodes = [],
 
                     <div className="p-2 overflow-y-auto custom-scrollbar flex flex-col gap-1.5">
                         {/* UNMAPPED DEVICES (DRAGGABLE) */}
-                        {filteredUnmapped.map(dev => (
-                            <div 
-                                key={dev.id || dev.PID} 
-                                draggable
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData('application/reactflow', dev.id || dev.PID);
-                                    e.dataTransfer.effectAllowed = 'move';
-                                }}
-                                className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/60 p-2 rounded-lg flex flex-col gap-1 cursor-grab active:cursor-grabbing transition-all hover:shadow-[0_0_10px_rgba(245,158,11,0.15)]"
-                                title="Tarik dan lepas ke kanvas untuk memetakan"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <span className="text-[11px] font-bold text-slate-200 truncate">{dev.name || dev.hostname}</span>
-                                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold uppercase ml-1 shrink-0">
-                                        {dev.type || 'device'}
-                                    </span>
+                        {filteredUnmapped.map(dev => {
+                            const isDown = (dev.status || '').toLowerCase() === 'down';
+                            const isWarning = (dev.status || '').toLowerCase() === 'warning';
+                            const statusDotColor = isDown ? 'bg-rose-500 shadow-[0_0_6px_#f43f5e]' : (isWarning ? 'bg-amber-400 shadow-[0_0_6px_#fbbf24]' : 'bg-emerald-400 shadow-[0_0_6px_#34d399]');
+
+                            return (
+                                <div 
+                                    key={dev.id || dev.PID} 
+                                    draggable
+                                    onDragStart={(e) => {
+                                        e.dataTransfer.setData('application/reactflow', dev.id || dev.PID);
+                                        e.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                    className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/60 p-2 rounded-lg flex flex-col gap-1 cursor-grab active:cursor-grabbing transition-all hover:shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+                                    title="Tarik dan lepas ke kanvas untuk memetakan"
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-1.5 truncate">
+                                            <span className={`w-2 h-2 rounded-full shrink-0 ${statusDotColor}`} title={`Status: ${dev.status || 'UP'}`} />
+                                            <span className="text-[11px] font-bold text-slate-200 truncate">{dev.name || dev.hostname}</span>
+                                        </div>
+                                        <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold uppercase ml-1 shrink-0">
+                                            {dev.type || 'device'}
+                                        </span>
+                                    </div>
+                                    <div className="text-[9px] font-mono flex justify-between items-center">
+                                        <span><span className="text-slate-500">IP: </span><span className="text-cyan-400 font-semibold">{dev.ip}</span></span>
+                                        {dev.mac && dev.mac !== '-' && <span className="text-slate-400 text-[8px]">{dev.mac}</span>}
+                                    </div>
+                                    <div className="text-[9px] text-slate-500 truncate mt-0.5">
+                                        {dev.floor || 'Unmapped'} {dev.location ? `• ${dev.location}` : ''}
+                                    </div>
                                 </div>
-                                <div className="text-[9px] font-mono flex justify-between items-center">
-                                    <span><span className="text-slate-500">IP: </span><span className="text-cyan-400 font-semibold">{dev.ip}</span></span>
-                                    {dev.mac && dev.mac !== '-' && <span className="text-slate-400 text-[8px]">{dev.mac}</span>}
-                                </div>
-                                <div className="text-[9px] text-slate-500 truncate mt-0.5">
-                                    {dev.floor || 'Unmapped'} {dev.location ? `• ${dev.location}` : ''}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {/* MAPPED DEVICES FOUND IN SEARCH */}
                         {filteredMapped.length > 0 && (

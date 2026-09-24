@@ -8,6 +8,8 @@ import { sendTeamsAlert } from '../services/teamsService.js';
 import { io as getIo } from '../../server.js';
 import { globalNvrCache } from '../utils/cache.js';
 
+import TopologyDrawing from '../models/TopologyDrawing.js';
+
 export const getPollingTasks = async (req, res) => {
     try {
         const agentId = req.query.agent_id || null;
@@ -16,9 +18,64 @@ export const getPollingTasks = async (req, res) => {
         const whereClause = agentId ? { AGENT_ID: agentId } : {};
         const devices = await Network.findAll({ where: whereClause });
         
-        const validDevices = devices.filter((dev) => dev.IP && dev.IP !== '-');
+        let validDevices = devices.filter((dev) => dev.IP && dev.IP !== '-');
 
-        console.log(`🤖 [Agent] Agent ${agentId || 'Unknown'} requesting polling tasks. Total tasks: ${validDevices.length}`);
+        // Kumpulkan semua node ID / IP / Hostname unik yang ada di drawing topologi
+        const activeTopoIds = new Set();
+        const activeTopoIps = new Set();
+        const activeTopoHosts = new Set();
+
+        try {
+            const allDrawings = await TopologyDrawing.findAll();
+            if (allDrawings && allDrawings.length > 0) {
+                allDrawings.forEach(dw => {
+                    const nodes = dw.nodes || {};
+                    Object.keys(nodes).forEach(key => {
+                        if (key.startsWith('group-') || nodes[key]?.isGroup) return;
+                        const cleanKey = String(key).trim().toLowerCase();
+                        activeTopoIds.add(cleanKey);
+                        if (nodes[key]?.ip) activeTopoIps.add(String(nodes[key].ip).trim().toLowerCase());
+                        if (nodes[key]?.label) activeTopoHosts.add(String(nodes[key].label).trim().toLowerCase());
+                        if (nodes[key]?.hostname) activeTopoHosts.add(String(nodes[key].hostname).trim().toLowerCase());
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Gagal membaca TopologyDrawings untuk filter polling agent:', e.message);
+        }
+
+        // Filter validDevices: HANYA polling perangkat yang benar-benar ada di drawing topologi aktif
+        validDevices = validDevices.filter((dev) => {
+            const pid = String(dev.PID || dev.id || '').trim().toLowerCase();
+            const ip = String(dev.IP || dev.ip || '').trim().toLowerCase();
+            const host = String(dev.HOSTNAME || dev.hostname || dev.label || dev.name || '').trim().toLowerCase();
+
+            return (pid && activeTopoIds.has(pid)) || 
+                   (ip && (activeTopoIds.has(ip) || activeTopoIps.has(ip))) ||
+                   (host && (activeTopoIds.has(host) || activeTopoHosts.has(host)));
+        });
+
+        // Ambil daftar perangkat yang dinonaktifkan polling-nya (Disabled Polling List)
+        let disabledPolling = {};
+        try {
+            const disabledSetting = await Setting.findOne({ where: { key: 'disabled_polling_devices' } });
+            if (disabledSetting && disabledSetting.value) {
+                disabledPolling = typeof disabledSetting.value === 'string' ? JSON.parse(disabledSetting.value) : disabledSetting.value;
+            }
+        } catch (e) {}
+
+        // Saring keluar perangkat yang polling-nya di-pause / dinonaktifkan
+        validDevices = validDevices.filter((dev) => {
+            const pid = dev.PID || dev.id;
+            const ip = dev.IP || dev.ip;
+            const host = dev.HOSTNAME || dev.hostname;
+            if (disabledPolling[pid] || disabledPolling[ip] || disabledPolling[host]) {
+                return false;
+            }
+            return true;
+        });
+
+        console.log(`🤖 [Agent] Agent ${agentId || 'Unknown'} requesting polling tasks. Filtered tasks in active topology (Enabled): ${validDevices.length}`);
 
         if (validDevices.length === 0) {
             return res.json({ tasks: [], credentials: {}, pollingOverrides: {} });

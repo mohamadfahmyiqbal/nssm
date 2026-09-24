@@ -24,7 +24,6 @@
     "node-cron": "^4.6.0",
     "nodemailer": "^9.0.3",
     "p-queue": "^9.3.3",
-    "ping": "^1.0.0",
     "sequelize": "^6.37.8",
     "socket.io": "^4.8.3",
     "tedious": "^20.0.0"

@@ -1,82 +1,53 @@
 import React from 'react';
-import { Network, Video, Server, Layers } from 'lucide-react';
+import StatusCounters from './StatusCounters';
+import { ShieldCheck, Activity, UserCheck } from 'lucide-react';
+import { useAuth, ROLES } from '../context/AuthContext';
 
-export default function Navbar({ activeTab, setActiveTab, selectedNetwork, setSelectedNetwork }) {
-    const navItems = [
-        { id: 'dashboard', label: 'TOPOLOGY' },
-        { id: 'inventory', label: 'INVENTORY' },
-        { id: 'mapping', label: 'LOCATION MAPPING' },
-        { id: 'reports', label: 'REPORTS & SLA' },
-    ];
+export default function Navbar({ activeTabTitle = 'Dashboard' }) {
+    const { currentUser, changeRole } = useAuth();
 
     return (
-        <header className="bg-slate-900/90 border-b border-slate-800 backdrop-blur-md sticky top-0 z-30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-4">
-            {/* Brand & Logo */}
+        <header className="bg-slate-900/80 border-b border-slate-800 backdrop-blur-md sticky top-0 z-30 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+            {/* Active View / Breadcrumb Context */}
             <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-600/20 border border-blue-500/40 rounded-xl text-blue-400">
-                    <Network className="w-5 h-5" />
-                </div>
-                <div>
-                    <h1 className="font-black text-sm tracking-wider text-slate-100 uppercase">
-                        NTMS PORTAL
-                    </h1>
-                    <p className="text-[10px] text-slate-400 font-mono">
-                        Network Topology Management System
-                    </p>
+                <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 font-semibold">
+                        Current Workspace
+                    </span>
+                    <h2 className="text-base font-extrabold text-slate-100 tracking-tight flex items-center gap-2">
+                        <span>{activeTabTitle}</span>
+                    </h2>
                 </div>
             </div>
 
-            {/* Network Type Filter Switcher (LAN vs CCTV) */}
-            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800/80 text-xs font-mono">
-                <button
-                    onClick={() => setSelectedNetwork('ALL')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${selectedNetwork === 'ALL'
-                            ? 'bg-blue-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>ALL NETWORKS</span>
-                </button>
-
-                <button
-                    onClick={() => setSelectedNetwork('LAN')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${selectedNetwork === 'LAN'
-                            ? 'bg-cyan-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                >
-                    <Server className="w-3.5 h-3.5" />
-                    <span>LAN NETWORK</span>
-                </button>
-
-                <button
-                    onClick={() => setSelectedNetwork('CCTV')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${selectedNetwork === 'CCTV'
-                            ? 'bg-purple-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                >
-                    <Video className="w-3.5 h-3.5" />
-                    <span>CCTV NETWORK</span>
-                </button>
+            {/* Middle Section: Real-time Counters */}
+            <div className="flex items-center">
+                <StatusCounters />
             </div>
 
-            {/* Main Nav Tabs */}
-            <nav className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80 text-xs font-sans">
-                {navItems.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => setActiveTab(item.id)}
-                        className={`px-3.5 py-1.5 rounded-lg font-bold tracking-wide transition-all ${activeTab === item.id
-                                ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-                            }`}
+            {/* Right Section: RBAC User Role Switcher & Clock */}
+            <div className="flex items-center gap-3">
+                {/* RBAC Role Selector Badge */}
+                <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs font-mono">
+                    <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-slate-400 text-[10px] hidden sm:inline">Role:</span>
+                    <select
+                        value={currentUser?.role || ROLES.TECHNICIAN}
+                        onChange={(e) => changeRole(e.target.value)}
+                        className="bg-transparent text-slate-200 text-xs font-bold outline-none cursor-pointer"
+                        title="Ganti Role Simulasi RBAC"
                     >
-                        {item.label}
-                    </button>
-                ))}
-            </nav>
+                        <option value={ROLES.TECHNICIAN} className="bg-slate-900 text-slate-200">Teknisi (Technician)</option>
+                        <option value={ROLES.SPV} className="bg-slate-900 text-amber-300">Supervisor (SPV)</option>
+                        <option value={ROLES.DEPT_HEAD} className="bg-slate-900 text-purple-300">Dept Head (Manager)</option>
+                    </select>
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs font-mono text-slate-400">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span>Cikampek, {new Date().toLocaleTimeString('id-ID')} WIB</span>
+                </div>
+            </div>
         </header>
     );
 }

@@ -1,67 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Navbar from './components/Navbar';
-import StatusCounters from './components/StatusCounters';
+import Sidebar from './components/Sidebar';
 import TopologyCanvas from './components/dashboard/TopologyCanvas';
 import InventoryTable from './components/inventory/InventoryTable';
 import FloorplanEditor from './components/mapping/FloorplanEditor';
 import ReportsView from './components/reports/ReportsView';
+import IncidentManagerView from './components/incidents/IncidentManagerView';
+import UserManagementView from './components/users/UserManagementView';
+import ScheduleGanttView from './components/schedules/ScheduleGanttView';
+import WorkOrderManagerView from './components/workorders/WorkOrderManagerView';
 import LoginPage from './components/auth/LoginPage';
-import { LogOut } from 'lucide-react';
 import { DeviceProvider } from './context/DeviceContext';
+import { AuthProvider } from './context/AuthContext';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedNetwork, setSelectedNetwork] = useState('ALL'); // 'ALL' | 'LAN' | 'CCTV'
+
+  const tabTitles = useMemo(() => ({
+    dashboard: 'Network Topology Visualizer',
+    inventory: 'Device Inventory & Configurations',
+    schedules: 'ITAM Maintenance Schedules & Gantt Timeline',
+    workorders: 'Work Order & Man Power Allocation',
+    incidents: 'Incident & Anomaly Management',
+    mapping: 'Location & Floorplan Mapping',
+    reports: 'System Reports & SLA Analytics',
+    users: 'User & Access Control Management'
+  }), []);
+
+  const [preselectedIncidentTask, setPreselectedIncidentTask] = useState(null);
+
+  const handleNavigateToIncidents = (task) => {
+    setPreselectedIncidentTask(task);
+    setActiveTab('incidents');
+  };
 
   if (!isAuthenticated) {
     return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
   }
 
   return (
-    <DeviceProvider>
-      <div className="min-h-screen bg-[#0a0e17] text-slate-100 flex flex-col font-sans">
-        {/* Top Navbar dengan Switcher Multi-Network */}
-        <Navbar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          selectedNetwork={selectedNetwork}
-          setSelectedNetwork={setSelectedNetwork}
-        />
+    <AuthProvider>
+      <DeviceProvider>
+        <div className="min-h-screen bg-[#0a0e17] text-slate-100 flex font-sans overflow-hidden">
+          {/* Left Mini Sidebar */}
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            onLogout={() => setIsAuthenticated(false)}
+          />
 
-        <main className="flex-1 w-full mx-auto p-4 flex flex-col gap-4">
-          {/* Status Counter Bar */}
-          <div className="flex items-center justify-between bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/80">
-            <StatusCounters />
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+            {/* Top Header Navbar */}
+            <Navbar activeTabTitle={tabTitles[activeTab] || 'NTMS Portal'} />
 
-            <div className="flex items-center gap-4">
-              <div className="text-xs font-mono text-slate-400 hidden sm:block">
-                Cikampek, {new Date().toLocaleTimeString('id-ID')} WIB
-              </div>
-
-              <button
-                onClick={() => setIsAuthenticated(false)}
-                className="flex items-center gap-1.5 text-xs font-bold font-mono px-3 py-1.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors"
-                title="Keluar Aplikasi"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>LOGOUT</span>
-              </button>
-            </div>
+            {/* Scrollable Viewport / Canvas Container */}
+            <main className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+              {/* Dynamic Navigation Views */}
+              {activeTab === 'dashboard' && (
+                <TopologyCanvas 
+                  selectedNetwork="ALL" 
+                  onNavigateToIncidents={handleNavigateToIncidents}
+                />
+              )}
+              {activeTab === 'inventory' && <InventoryTable />}
+              {activeTab === 'schedules' && <ScheduleGanttView />}
+              {activeTab === 'workorders' && <WorkOrderManagerView />}
+              {activeTab === 'incidents' && (
+                <IncidentManagerView 
+                  initialTask={preselectedIncidentTask}
+                  onClearInitialTask={() => setPreselectedIncidentTask(null)}
+                />
+              )}
+              {activeTab === 'mapping' && <FloorplanEditor />}
+              {activeTab === 'reports' && <ReportsView />}
+              {activeTab === 'users' && <UserManagementView />}
+            </main>
           </div>
-
-          {/* Dynamic Navigation Views */}
-          {activeTab === 'dashboard' && (
-            <TopologyCanvas selectedNetwork={selectedNetwork} />
-          )}
-          {activeTab === 'inventory' && <InventoryTable />}
-
-          {/* 2. Tampilkan FloorplanEditor saat tab 'mapping' aktif */}
-          {activeTab === 'mapping' && <FloorplanEditor />}
-
-          {activeTab === 'reports' && <ReportsView />}
-        </main>
-      </div>
-    </DeviceProvider>
+        </div>
+      </DeviceProvider>
+    </AuthProvider>
   );
 }
