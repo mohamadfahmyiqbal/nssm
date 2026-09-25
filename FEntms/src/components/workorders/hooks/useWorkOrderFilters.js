@@ -44,10 +44,21 @@ export function useWorkOrderFilters({
                 const assignedCount = assignedReferenceMap.get(refId) || 0;
                 const isAssigned = assignedCount > 0;
 
+                // Ekstrak Asset ID Spesifik dan Lokasi Presisi
+                const assetId = item.assetId || item.asset_id || std.assetId || std.asset_id || (std.namaPerangkat ? `${std.subKategori || 'DEV'}-${std.namaPerangkat.replace(/\s+/g, '-').slice(0, 8).toUpperCase()}` : `AST-${item.check_id}`);
+                const location = item.location || item.lokasi || std.lokasi || std.location || 'Server Room 2B, Lt. 2';
+                const priority = item.priority || (item.status === 'PLAN' ? 'P2 Medium' : 'P3 Low');
+                const priorityLevel = (item.priority || item.status === 'PLAN' ? 'P2' : 'P3');
+
                 list.push({
                     uniqueId: refId,
                     type: 'PREVENTIVE_MAINTENANCE',
                     title: `[PM] ${std.subKategori || 'Perangkat'} - ${std.namaPerangkat || std.tipePerangkat || ''}: ${item.pengecekan || 'Checklist'}`,
+                    assetId,
+                    location,
+                    priority,
+                    priorityLevel,
+                    slaRemaining: '4h remaining',
                     category: std.kategori || 'Hardware',
                     subKategori: std.subKategori || 'Maintenance',
                     perangkat: std.namaPerangkat || std.tipePerangkat || '-',
@@ -72,10 +83,20 @@ export function useWorkOrderFilters({
                 const assignedCount = assignedReferenceMap.get(refId) || 0;
                 const isAssigned = assignedCount > 0;
 
+                const assetId = inc.assetId || inc.primaryHostname || `INC-${inc.reportNumber || inc.id}`;
+                const location = inc.location || inc.lokasi || 'Server Room Main, Rack 04';
+                const priority = inc.priority || (inc.status === 'OPEN' ? 'P1 Critical' : 'P2 High');
+                const priorityLevel = (inc.priority || inc.status === 'OPEN' ? 'P1' : 'P2');
+
                 list.push({
                     uniqueId: refId,
                     type: 'INCIDENT_ANOMALY',
-                    title: `[INC] ${inc.reportNumber}: ${inc.primaryHostname || 'Device'} (${inc.primaryIp || '-'}) - ${inc.symptom || 'Gangguan'}`,
+                    title: `[INC] ${inc.reportNumber || inc.id}: ${inc.primaryHostname || 'Device'} (${inc.primaryIp || '-'}) - ${inc.symptom || 'Gangguan'}`,
+                    assetId,
+                    location,
+                    priority,
+                    priorityLevel,
+                    slaRemaining: inc.status === 'OPEN' ? '1h 30m remaining' : '3h remaining',
                     category: 'Incident / Trouble',
                     subKategori: inc.location || 'Network',
                     perangkat: inc.primaryHostname || inc.primaryIp || '-',

@@ -11,8 +11,8 @@ import {
     Coffee,
     Download
 } from 'lucide-react';
-import { generateTechnicianWorkOrderPDF } from '../../utils/technicianWorkOrderPdfGenerator';
-import { showToast } from '../../utils/swal';
+import { generateTechnicianWorkOrderPDF } from '../../../utils/technicianWorkOrderPdfGenerator';
+import { showToast } from '../../../utils/swal';
 
 const HOURS = [
     '08:00',
@@ -36,7 +36,8 @@ export default function DailyTimelineScheduler({
     onSlotDrop,
     onWoClick,
     onBreakClick,
-    onOpenAddBreak
+    onOpenAddBreak,
+    onSelectTechnician
 }) {
     // Total menit dari 08:00 sampai 17:00 = 9 jam = 540 menit
     const START_MINUTES = 8 * 60; // 480 menit
@@ -62,12 +63,13 @@ export default function DailyTimelineScheduler({
         if (endMins <= startMins) endMins = Math.min(START_MINUTES + TOTAL_MINUTES, startMins + 5);
 
         const leftPercent = ((startMins - START_MINUTES) / TOTAL_MINUTES) * 100;
-        // Minimum width 1.8% agar tugas durasi pendek tetap terlihat dan bisa diklik
-        const widthPercent = Math.max(1.8, ((endMins - startMins) / TOTAL_MINUTES) * 100);
+        // Minimum width 2.5% agar tugas durasi pendek tetap terlihat jelas
+        const widthPercent = Math.max(2.5, ((endMins - startMins) / TOTAL_MINUTES) * 100);
 
         return {
             left: `${leftPercent}%`,
-            width: `${widthPercent}%`
+            width: `${widthPercent}%`,
+            durationMins: endMins - startMins
         };
     };
 
@@ -77,7 +79,7 @@ export default function DailyTimelineScheduler({
             <div className="px-5 py-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
                     <Clock className="w-4 h-4 text-cyan-400" />
-                    <span className="font-bold text-white text-xs">Visual Timeline Jadwal Harian Teknisi (Presisi 5 Menit • 08:00 - 17:00 WIB)</span>
+                    <span className="font-bold text-white text-xs">Visual Timeline Jadwal Harian Teknisi</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs font-mono">
                     <div className="flex items-center gap-1.5">
@@ -152,7 +154,7 @@ export default function DailyTimelineScheduler({
                                 let isHelper = false;
                                 let membersList = [];
                                 if (w.teamMembersJson) {
-                                    try { membersList = JSON.parse(w.teamMembersJson); } catch (e) {}
+                                    try { membersList = JSON.parse(w.teamMembersJson); } catch (e) { }
                                 } else if (Array.isArray(w.teamMembers)) {
                                     membersList = w.teamMembers;
                                 }
@@ -181,15 +183,19 @@ export default function DailyTimelineScheduler({
                                     key={techNik || tech.id}
                                     className="flex items-stretch bg-slate-950/60 border border-slate-800/90 rounded-xl hover:border-slate-700 transition-all min-h-[76px]"
                                 >
-                                    {/* Tech Card Left Column */}
-                                    <div className="w-48 flex-shrink-0 p-3 bg-slate-900/60 border-r border-slate-800/80 rounded-l-xl flex flex-col justify-center">
+                                    {/* Tech Card Left Column (Clickable to view tasks) */}
+                                    <div
+                                        onClick={() => onSelectTechnician && onSelectTechnician(tech)}
+                                        title={`Klik untuk melihat detail seluruh tugas ${tech.nama || tech.NAMA}`}
+                                        className="w-48 flex-shrink-0 p-3 bg-slate-900/60 hover:bg-slate-900 border-r border-slate-800/80 rounded-l-xl flex flex-col justify-center cursor-pointer transition-colors group"
+                                    >
                                         <div className="flex items-center justify-between gap-1">
                                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                <div className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 font-bold flex items-center justify-center text-xs shadow-inner flex-shrink-0">
+                                                <div className="w-7 h-7 rounded-lg bg-blue-600/20 group-hover:bg-blue-600/30 border border-blue-500/30 group-hover:border-blue-400 text-blue-400 font-bold flex items-center justify-center text-xs shadow-inner flex-shrink-0 transition-colors">
                                                     {(tech.nama || tech.NAMA || 'T').charAt(0)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="font-bold text-slate-100 text-xs truncate">
+                                                    <div className="font-bold text-slate-100 group-hover:text-blue-400 text-xs truncate transition-colors">
                                                         {tech.nama || tech.NAMA}
                                                     </div>
                                                     <div className="text-[10px] font-mono text-slate-500">
@@ -240,7 +246,7 @@ export default function DailyTimelineScheduler({
                                     </div>
 
                                     {/* Timeline Slots Grid (9 Jam x 12 Sub-slots = 108 Sub-slots @ 5 menit) */}
-                                    <div className="flex-1 relative grid grid-cols-9 divide-x divide-slate-800/40 min-h-[68px] bg-slate-950/20">
+                                    <div className="flex-1 relative grid grid-cols-9 divide-x divide-slate-800/40 min-h-[76px] bg-slate-950/20 py-1">
                                         {/* Background Slot click & Drag-Drop triggers per jam dengan 12 sub-slot per 5 menit */}
                                         {HOURS.slice(0, 9).map((hour, hourIdx) => {
                                             const baseHourMins = (8 + hourIdx) * 60;
@@ -303,13 +309,14 @@ export default function DailyTimelineScheduler({
                                                         position: 'absolute',
                                                         left: pos.left,
                                                         width: pos.width,
+                                                        minWidth: '70px',
                                                         top: '4px',
                                                         bottom: '4px'
                                                     }}
-                                                    className={`rounded-lg border border-amber-500/60 px-2 py-1 flex flex-col justify-between shadow-lg cursor-pointer hover:brightness-125 transition-all z-20 overflow-hidden bg-gradient-to-r from-amber-950/90 via-slate-900/90 to-amber-950/90 text-amber-200 border-dashed hover:border-solid`}
+                                                    className="rounded-lg border border-amber-500/60 px-2 py-1 flex flex-col justify-between shadow-lg cursor-pointer hover:brightness-125 transition-all z-20 overflow-hidden bg-gradient-to-r from-amber-950/90 via-slate-900/90 to-amber-950/90 text-amber-200 border-dashed hover:border-solid"
                                                     title={`Waktu Istirahat: ${brk.label} (${brk.startTime} - ${brk.endTime}) - Klik untuk edit/hapus`}
                                                 >
-                                                    <div className="flex items-center justify-between gap-1">
+                                                    <div className="flex items-center justify-between gap-1 leading-none">
                                                         <span className="font-mono font-bold text-[9px] text-amber-300 flex items-center gap-1 truncate">
                                                             <Coffee className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
                                                             <span>{brk.startTime} - {brk.endTime}</span>
@@ -318,11 +325,11 @@ export default function DailyTimelineScheduler({
                                                             {isGlobal ? 'TIM' : 'INDIVIDU'}
                                                         </span>
                                                     </div>
-                                                    <div className="font-semibold text-[11px] text-amber-100 truncate leading-tight mt-0.5">
+                                                    <div className="font-bold text-[10px] text-amber-100 truncate leading-tight my-0.5">
                                                         {brk.label}
                                                     </div>
-                                                    <div className="text-[8px] text-amber-400/80 font-mono truncate">
-                                                        {brk.durationMinutes ? `${brk.durationMinutes} Menit` : 'Istirahat'}
+                                                    <div className="text-[8px] text-amber-400/80 font-mono truncate leading-none">
+                                                        {brk.durationMinutes ? `${brk.durationMinutes}m` : 'Istirahat'}
                                                     </div>
                                                 </div>
                                             );
@@ -335,10 +342,10 @@ export default function DailyTimelineScheduler({
                                             const isIncident = wo.woType === 'INCIDENT_ANOMALY';
 
                                             let blockBg = isResolved
-                                                ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200'
+                                                ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-200'
                                                 : isIncident
-                                                    ? 'bg-rose-950/80 border-rose-500/50 text-rose-200'
-                                                    : 'bg-blue-950/80 border-blue-500/50 text-blue-200';
+                                                    ? 'bg-rose-950/90 border-rose-500/60 text-rose-200'
+                                                    : 'bg-blue-950/90 border-blue-500/60 text-blue-200';
 
                                             return (
                                                 <div
@@ -351,25 +358,27 @@ export default function DailyTimelineScheduler({
                                                         position: 'absolute',
                                                         left: pos.left,
                                                         width: pos.width,
-                                                        top: '6px',
-                                                        bottom: '6px'
+                                                        minWidth: '75px',
+                                                        top: '4px',
+                                                        bottom: '4px'
                                                     }}
-                                                    className={`rounded-lg border px-2.5 py-1 flex flex-col justify-between shadow-lg cursor-pointer hover:brightness-125 transition-all z-10 overflow-hidden ${blockBg}`}
-                                                    title={`${wo.woNumber}: ${wo.title} (${wo.startTime || '08:00'} - ${wo.endTime || '10:00'})`}
+                                                    className={`rounded-lg border px-2 py-1 flex flex-col justify-between shadow-lg cursor-pointer hover:brightness-125 transition-all z-10 overflow-hidden ${blockBg}`}
+                                                    title={`${wo.woNumber}: ${wo.title} (${wo.startTime || '08:00'} - ${wo.endTime || '10:00'} • ${wo.status})`}
                                                 >
-                                                    <div className="flex items-center justify-between gap-1">
-                                                        <span className="font-mono font-bold text-[10px] truncate">
-                                                            {wo.startTime || '08:00'} - {wo.endTime || '10:00'}
+                                                    <div className="flex items-center justify-between gap-1 leading-none">
+                                                        <span className="font-mono font-bold text-[9px] truncate">
+                                                            {wo.startTime || '08:00'}-{wo.endTime || '10:00'}
                                                         </span>
-                                                        <span className="text-[9px] font-bold px-1 rounded bg-black/40 font-mono">
+                                                        <span className="text-[8px] font-bold px-1 rounded bg-black/50 font-mono flex-shrink-0">
                                                             {wo.status}
                                                         </span>
                                                     </div>
-                                                    <div className="font-semibold text-xs truncate leading-tight mt-0.5">
+                                                    <div className="font-bold text-[10px] truncate leading-tight my-0.5">
                                                         {wo.title}
                                                     </div>
-                                                    <div className="text-[9px] opacity-75 truncate font-mono">
-                                                        {wo.woNumber}
+                                                    <div className="text-[8px] opacity-80 truncate font-mono flex items-center justify-between leading-none">
+                                                        <span className="truncate">{wo.woNumber}</span>
+                                                        {pos.durationMins && <span className="flex-shrink-0 ml-1 font-bold">{pos.durationMins}m</span>}
                                                     </div>
                                                 </div>
                                             );

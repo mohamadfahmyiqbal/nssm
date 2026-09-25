@@ -11,8 +11,8 @@ import {
     Download,
     FileText
 } from 'lucide-react';
-import { generateTechnicianWorkOrderPDF } from '../../utils/technicianWorkOrderPdfGenerator';
-import { showToast } from '../../utils/swal';
+import { generateTechnicianWorkOrderPDF } from '../../../utils/technicianWorkOrderPdfGenerator';
+import { showToast } from '../../../utils/swal';
 
 export default function TechnicianTasksModal({
     isOpen,

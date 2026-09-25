@@ -27,8 +27,17 @@ export const generateTechnicianWorkOrderPDF = ({
     const techName = String(technician.name || technician.nama || technician.NAMA || 'Teknisi').trim();
     const techDept = technician.dept || technician.DEPT || 'IT Infrastructure & Support';
 
-    // Filter WO milik teknisi ini
+    // Filter WO milik teknisi ini (serta filter berdasarkan selectedDate jika ada)
     const techWos = workOrders.filter(w => {
+        // Filter tanggal jika selectedDate diberikan
+        if (selectedDate && w.targetDate) {
+            const woDateStr = String(w.targetDate).slice(0, 10);
+            const filterDateStr = String(selectedDate).slice(0, 10);
+            if (woDateStr !== filterDateStr) {
+                return false;
+            }
+        }
+
         const wNik = String(w.assignedTechnicianNik || '').trim();
         const wName = String(w.assignedTechnicianName || '').trim().toLowerCase();
         const isPic = (techNik && wNik === techNik) || (techName.toLowerCase() && wName === techName.toLowerCase());

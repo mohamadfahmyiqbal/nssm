@@ -1,35 +1,43 @@
 import React, { useState } from 'react';
-import { Briefcase, RefreshCw } from 'lucide-react';
 import { useDevices } from '../../context/DeviceContext';
 
 // Custom Hooks & Utils
-import { useWorkOrderData } from './useWorkOrderData';
-import { useWorkOrderFilters } from './useWorkOrderFilters';
+import { useWorkOrderData } from './hooks/useWorkOrderData';
+import { useWorkOrderFilters } from './hooks/useWorkOrderFilters';
 import {
     getPriorityBadge,
     getStatusBadge,
     formatDisplayDate,
     calculateTaskDurationMinutes,
     calculateGroupDurationMinutes
-} from './workOrderUtils';
+} from './utils/workOrderUtils';
+import { getInitialFormData, getInitialBreakFormData } from './utils/workOrderFormDefaults';
 
 // Sub Components
-import WorkOrderStatsCards from './WorkOrderStatsCards';
-import TechnicianWorkloadBar from './TechnicianWorkloadBar';
-import WorkOrderControlsBar from './WorkOrderControlsBar';
-import DailyTimelineScheduler from './DailyTimelineScheduler';
-import TaskPoolSidebar from './TaskPoolSidebar';
-import WorkOrdersTable from './WorkOrdersTable';
-import WorkOrderPipelineEditor from './WorkOrderPipelineEditor';
-import WorkOrderOpenTasksQueue from './WorkOrderOpenTasksQueue';
-import WorkOrderModal from './WorkOrderModal';
-import WorkOrderDetailModal from './WorkOrderDetailModal';
-import TechnicianTasksModal from './TechnicianTasksModal';
-import ScheduleBreakModal from './ScheduleBreakModal';
+import WorkOrderStatsCards from './components/WorkOrderStatsCards';
+import TechnicianWorkloadBar from './timeline/TechnicianWorkloadBar';
+import WorkOrderHeaderTabs from './components/WorkOrderHeaderTabs';
+import WorkOrderControlsBar from './components/WorkOrderControlsBar';
+import DailyTimelineScheduler from './timeline/DailyTimelineScheduler';
+import TaskPoolSidebar from './timeline/TaskPoolSidebar';
+import WorkOrdersTable from './components/WorkOrdersTable';
+import WorkOrderPipelineEditor from './components/WorkOrderPipelineEditor';
+import WorkOrderOpenTasksQueue from './components/WorkOrderOpenTasksQueue';
+import WorkOrderModal from './modals/WorkOrderModal';
+import WorkOrderDetailModal from './modals/WorkOrderDetailModal';
+import TechnicianTasksModal from './modals/TechnicianTasksModal';
+import ScheduleBreakModal from './modals/ScheduleBreakModal';
 
-export default function WorkOrderManagerView() {
+export default function WorkOrderManagerView({ initialViewTab = 'PIPELINE_EDITOR' }) {
     const { devices: contextDevices } = useDevices();
-    const [viewTab, setViewTab] = useState('SCHEDULER_WORKSPACE'); // 'SCHEDULER_WORKSPACE' or 'WORK_ORDERS'
+    const [viewTab, setViewTab] = useState(initialViewTab); // 'PIPELINE_EDITOR' | 'SCHEDULER_WORKSPACE' | 'WORK_ORDERS'
+
+    React.useEffect(() => {
+        if (initialViewTab) {
+            setViewTab(initialViewTab);
+        }
+    }, [initialViewTab]);
+
     const [sourceType, setSourceType] = useState('ALL');
 
     // Filters & Date States
@@ -79,25 +87,78 @@ export default function WorkOrderManagerView() {
         sourceType
     });
 
+    // Dynamic Summary Stats synced strictly with selectedDate (Harian Daily Scheduler)
+    const statsMetrics = React.useMemo(() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const activeDateStr = selectedDate || todayStr;
+        const targetWos = workOrders.filter(w => {
+            if (dateMode === 'ALL_DATES') return true;
+            return w.targetDate && w.targetDate.startsWith(activeDateStr);
+        });
+
+        // 1. OPEN (Backlog tugas yang belum di-assign atau WO berstatus OPEN)
+        const openWoCount = targetWos.filter(w => (w.status || 'OPEN').toUpperCase() === 'OPEN').length;
+        const unassignedSourceTasksCount = filteredSourceTasks.filter(t => !t.isAssigned).length;
+        const openCount = openWoCount + unassignedSourceTasksCount;
+
+        // 2. SCHEDULED (WO yang sudah ditugaskan / ASSIGNED / SCHEDULED tapi belum mulai)
+        const scheduledCount = targetWos.filter(w => {
+            const st = (w.status || '').toUpperCase();
+            return st === 'ASSIGNED' || st === 'SCHEDULED' || st === 'PLAN';
+        }).length;
+
+        // 3. IN PROGRESS
+        const inProgressCount = targetWos.filter(w => (w.status || '').toUpperCase() === 'IN_PROGRESS').length;
+
+        // 4. PENDING / ON-HOLD
+        const pendingCount = targetWos.filter(w => {
+            const st = (w.status || '').toUpperCase();
+            return st === 'PENDING' || st === 'ON_HOLD' || st === 'ON-HOLD' || st === 'HOLD';
+        }).length;
+
+        // 5. RESOLVED / DONE
+        const resolvedCount = targetWos.filter(w => {
+            const st = (w.status || '').toUpperCase();
+            return st === 'RESOLVED' || st === 'DONE' || st === 'CLOSED';
+        }).length;
+
+        // 6. OVERDUE / BREACHED (Tugas belum selesai yang target tanggal/waktunya sudah lewat)
+        const now = new Date();
+        const overdueCount = targetWos.filter(w => {
+            const st = (w.status || '').toUpperCase();
+            if (st === 'RESOLVED' || st === 'DONE' || st === 'CLOSED') return false;
+            if (!w.targetDate) return false;
+            
+            // Cek jika tanggal lewat atau jika hari ini waktu endTime lewat
+            const wDate = w.targetDate.slice(0, 10);
+            if (wDate < todayStr) return true;
+            if (wDate === todayStr && w.endTime) {
+                const [eh, em] = w.endTime.split(':').map(Number);
+                const endDateTime = new Date();
+                endDateTime.setHours(eh || 17, em || 0, 0, 0);
+                return now > endDateTime;
+            }
+            return false;
+        }).length;
+
+        // 7. TOTAL TODAY (Seluruh WO aktif pada tanggal terpilih)
+        const totalToday = targetWos.length;
+
+        return {
+            open: openCount,
+            scheduled: scheduledCount,
+            inProgress: inProgressCount,
+            pending: pendingCount,
+            resolved: resolvedCount,
+            overdue: overdueCount,
+            totalToday: totalToday
+        };
+    }, [workOrders, filteredSourceTasks, selectedDate, dateMode]);
+
     // Modal States: Work Order
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingWo, setEditingWo] = useState(null);
-    const [formData, setFormData] = useState({
-        woType: 'PREVENTIVE_MAINTENANCE',
-        title: '',
-        description: '',
-        priority: 'MEDIUM',
-        status: 'ASSIGNED',
-        targetDate: new Date().toISOString().slice(0, 10),
-        startTime: '08:00',
-        endTime: '10:00',
-        estimatedHours: 2.0,
-        assignedTechnicianNik: '',
-        assignedTechnicianName: '',
-        teamMembers: [],
-        referenceId: '',
-        completionNotes: ''
-    });
+    const [formData, setFormData] = useState(() => getInitialFormData(new Date().toISOString().slice(0, 10)));
 
     // Modal States: Detail & Tech Tasks
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -108,14 +169,7 @@ export default function WorkOrderManagerView() {
     // Modal States: Schedule Break
     const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
     const [editingBreak, setEditingBreak] = useState(null);
-    const [breakFormData, setBreakFormData] = useState({
-        technicianNik: 'ALL',
-        technicianName: 'Semua Teknisi',
-        label: '',
-        startTime: '12:00',
-        endTime: '13:00',
-        notes: ''
-    });
+    const [breakFormData, setBreakFormData] = useState(() => getInitialBreakFormData());
 
     // Date navigation
     const shiftSelectedDate = (days) => {
@@ -128,16 +182,17 @@ export default function WorkOrderManagerView() {
         setSelectedDate(new Date().toISOString().slice(0, 10));
     };
 
+    const resetWorkOrderForm = (customDate = selectedDate) => {
+        setEditingWo(null);
+        setFormData(getInitialFormData(customDate));
+    };
+
     // Break Handlers
     const handleOpenAddBreak = (customInit = {}) => {
         setEditingBreak(null);
         setBreakFormData({
-            technicianNik: customInit.technicianNik || 'ALL',
-            technicianName: customInit.technicianName || 'Semua Teknisi',
-            label: customInit.label || '',
-            startTime: customInit.startTime || '12:00',
-            endTime: customInit.endTime || '13:00',
-            notes: ''
+            ...getInitialBreakFormData(),
+            ...customInit
         });
         setIsBreakModalOpen(true);
     };
@@ -166,6 +221,15 @@ export default function WorkOrderManagerView() {
         if (success) setIsBreakModalOpen(false);
     };
 
+    // Helper hitung jam selesai dari durasi
+    const computeEndTime = (startHourStr, durationMinutes) => {
+        const [sh, sm] = (startHourStr || '08:00').split(':').map(Number);
+        const totalEndMins = (sh || 0) * 60 + (sm || 0) + durationMinutes;
+        const endH = Math.min(23, Math.floor(totalEndMins / 60));
+        const endM = totalEndMins % 60;
+        return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    };
+
     // Work Order Creation / Assignment Handlers
     const handleAssignFromTask = (task) => {
         setEditingWo(null);
@@ -173,31 +237,21 @@ export default function WorkOrderManagerView() {
         const initialDevices = task.perangkat ? [task.perangkat] : [];
         const targetDuration = Math.max(1, initialDevices.length) * unitMins;
         const stdHours = Number((targetDuration / 60).toFixed(2));
-        
-        const startHourMins = 8 * 60;
-        const endHourMins = startHourMins + targetDuration;
-        const endH = Math.min(23, Math.floor(endHourMins / 60));
-        const endM = endHourMins % 60;
-        const autoEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+        const autoEndTime = computeEndTime('08:00', targetDuration);
 
         setFormData({
+            ...getInitialFormData(task.targetDate || selectedDate),
             woType: task.type,
             title: task.title,
             description: `Tipe: ${task.type}\nPerangkat: ${task.perangkat}\nBagian / Checklist: ${task.checkItem}\nPeriodik: ${task.periodik}`,
-            priority: task.suggestedPriority,
-            status: 'ASSIGNED',
-            targetDate: task.targetDate || selectedDate,
+            priority: task.suggestedPriority || 'MEDIUM',
             startTime: '08:00',
             endTime: autoEndTime,
             estimatedHours: stdHours,
             unitCycleTimeMinutes: unitMins,
             targetDurationMinutes: targetDuration,
-            assignedTechnicianNik: '',
-            assignedTechnicianName: '',
-            teamMembers: [],
             devices: initialDevices,
-            referenceId: task.uniqueId,
-            completionNotes: ''
+            referenceId: task.uniqueId
         });
         setIsModalOpen(true);
     };
@@ -212,36 +266,21 @@ export default function WorkOrderManagerView() {
         const initialDevices = group.perangkat ? [group.perangkat] : [];
         const targetDuration = Math.max(1, initialDevices.length) * unitMins;
         const stdHours = Number((targetDuration / 60).toFixed(2));
-
-        const startHourMins = 8 * 60;
-        const endHourMins = startHourMins + targetDuration;
-        const endH = Math.min(23, Math.floor(endHourMins / 60));
-        const endM = endHourMins % 60;
-        const autoEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+        const autoEndTime = computeEndTime('08:00', targetDuration);
 
         setFormData({
+            ...getInitialFormData(firstDate),
             woType: group.type,
             title: `[PM Group] ${group.subKategori} - ${group.perangkat} (${group.tasks.length} Items)`,
             description: `Pemeliharaan Rutin untuk Unit:\nPerangkat: ${group.perangkat}\nSub Kategori: ${group.subKategori}\nKategori: ${group.category}\n\nDaftar Checklist Standar:\n${checklistSummary}`,
             priority: 'MEDIUM',
-            status: 'ASSIGNED',
-            targetDate: firstDate,
             startTime: '08:00',
             endTime: autoEndTime,
             estimatedHours: stdHours,
             unitCycleTimeMinutes: unitMins,
             targetDurationMinutes: targetDuration,
-            actualHours: '',
-            actualStartTime: '',
-            actualEndTime: '',
-            actualDurationMinutes: '',
-            assignedTechnicianNik: '',
-            assignedTechnicianName: '',
-            teamMembers: [],
             devices: initialDevices,
-            referenceId: allGroupReferenceIds,
-            completionNotes: '',
-            remarks: ''
+            referenceId: allGroupReferenceIds
         });
         setIsModalOpen(true);
     };
@@ -249,28 +288,14 @@ export default function WorkOrderManagerView() {
     const handleSlotClick = (tech, startHour, endHour) => {
         setEditingWo(null);
         setFormData({
-            woType: 'PREVENTIVE_MAINTENANCE',
-            title: '',
-            description: '',
-            priority: 'MEDIUM',
-            status: 'ASSIGNED',
-            targetDate: selectedDate,
+            ...getInitialFormData(selectedDate),
             startTime: startHour || '08:00',
             endTime: endHour || '08:30',
             estimatedHours: 0.5,
             unitCycleTimeMinutes: 30,
             targetDurationMinutes: 30,
-            actualHours: '',
-            actualStartTime: '',
-            actualEndTime: '',
-            actualDurationMinutes: '',
             assignedTechnicianNik: tech.nik || tech.NIK || '',
-            assignedTechnicianName: tech.nama || tech.NAMA || '',
-            teamMembers: [],
-            devices: [],
-            referenceId: '',
-            completionNotes: '',
-            remarks: ''
+            assignedTechnicianName: tech.nama || tech.NAMA || ''
         });
         setIsModalOpen(true);
     };
@@ -279,22 +304,15 @@ export default function WorkOrderManagerView() {
         if (payload.kind === 'BREAK') {
             const bItem = payload.breakItem || {};
             const dur = payload.durationMinutes || 60;
-            const [sh, sm] = (startHour || '12:00').split(':').map(Number);
-            const totalEndMins = (sh || 0) * 60 + (sm || 0) + dur;
-            const eh = Math.min(23, Math.floor(totalEndMins / 60));
-            const em = totalEndMins % 60;
-            const autoEndStr = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+            const autoEndStr = computeEndTime(startHour || '12:00', dur);
 
-            setEditingBreak(null);
-            setBreakFormData({
+            handleOpenAddBreak({
                 technicianNik: tech.nik || tech.NIK || 'ALL',
                 technicianName: tech.nama || tech.NAMA || 'Semua Teknisi',
                 label: bItem.label || '',
                 startTime: startHour || '12:00',
-                endTime: autoEndStr,
-                notes: ''
+                endTime: autoEndStr
             });
-            setIsBreakModalOpen(true);
             return;
         }
 
@@ -309,36 +327,22 @@ export default function WorkOrderManagerView() {
             const initialDevices = group.perangkat ? [group.perangkat] : [];
             const targetDuration = Math.max(1, initialDevices.length) * unitMins;
             const stdHours = Number((targetDuration / 60).toFixed(2));
-
-            const [sh, sm] = (startHour || '08:00').split(':').map(Number);
-            const totalEndMins = sh * 60 + sm + targetDuration;
-            const eh = Math.min(23, Math.floor(totalEndMins / 60));
-            const em = totalEndMins % 60;
-            const autoEndStr = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+            const autoEndStr = computeEndTime(startHour || '08:00', targetDuration);
 
             setFormData({
+                ...getInitialFormData(selectedDate),
                 woType: group.type,
                 title: `[PM Group] ${group.subKategori} - ${group.perangkat} (${group.tasks.length} Items)`,
                 description: `Pemeliharaan Rutin untuk Unit:\nPerangkat: ${group.perangkat}\nSub Kategori: ${group.subKategori}\nKategori: ${group.category}\n\nDaftar Checklist Standar:\n${checklistSummary}`,
-                priority: 'MEDIUM',
-                status: 'ASSIGNED',
-                targetDate: selectedDate,
                 startTime: startHour || '08:00',
                 endTime: autoEndStr,
                 estimatedHours: stdHours,
                 unitCycleTimeMinutes: unitMins,
                 targetDurationMinutes: targetDuration,
-                actualHours: '',
-                actualStartTime: '',
-                actualEndTime: '',
-                actualDurationMinutes: '',
                 assignedTechnicianNik: tech.nik || tech.NIK || '',
                 assignedTechnicianName: tech.nama || tech.NAMA || '',
-                teamMembers: [],
                 devices: initialDevices,
-                referenceId: allGroupReferenceIds,
-                completionNotes: '',
-                remarks: ''
+                referenceId: allGroupReferenceIds
             });
             setIsModalOpen(true);
         } else if (payload.kind === 'TASK') {
@@ -347,36 +351,23 @@ export default function WorkOrderManagerView() {
             const initialDevices = task.perangkat ? [task.perangkat] : [];
             const targetDuration = Math.max(1, initialDevices.length) * unitMins;
             const stdHours = Number((targetDuration / 60).toFixed(2));
-
-            const [sh, sm] = (startHour || '08:00').split(':').map(Number);
-            const totalEndMins = sh * 60 + sm + targetDuration;
-            const eh = Math.min(23, Math.floor(totalEndMins / 60));
-            const em = totalEndMins % 60;
-            const autoEndStr = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+            const autoEndStr = computeEndTime(startHour || '08:00', targetDuration);
 
             setFormData({
+                ...getInitialFormData(selectedDate),
                 woType: task.type,
                 title: task.title,
                 description: `Tipe: ${task.type}\nPerangkat: ${task.perangkat}\nBagian / Checklist: ${task.checkItem}\nPeriodik: ${task.periodik}`,
                 priority: task.suggestedPriority || 'MEDIUM',
-                status: 'ASSIGNED',
-                targetDate: selectedDate,
                 startTime: startHour || '08:00',
                 endTime: autoEndStr,
                 estimatedHours: stdHours,
                 unitCycleTimeMinutes: unitMins,
                 targetDurationMinutes: targetDuration,
-                actualHours: '',
-                actualStartTime: '',
-                actualEndTime: '',
-                actualDurationMinutes: '',
                 assignedTechnicianNik: tech.nik || tech.NIK || '',
                 assignedTechnicianName: tech.nama || tech.NAMA || '',
-                teamMembers: [],
                 devices: initialDevices,
-                referenceId: task.uniqueId,
-                completionNotes: '',
-                remarks: ''
+                referenceId: task.uniqueId
             });
             setIsModalOpen(true);
         }
@@ -458,74 +449,20 @@ export default function WorkOrderManagerView() {
 
     return (
         <div className="flex flex-col gap-4 h-full">
-            {/* Top Summary Stat Cards */}
+            {/* Top Summary Stat Cards (Synchronized strictly to selectedDate) */}
             <WorkOrderStatsCards
-                summary={summary}
-                schedulesCount={schedules.length}
-                incidentsCount={incidents.length}
-            />
-
-            {/* Man Power Allocation Workload Bar (Klik Card untuk Detail Task) */}
-            <TechnicianWorkloadBar
-                technicians={technicians}
-                workloads={calculatedTechnicianWorkloads}
-                onSelectTechnician={handleCardTechClick}
+                stats={statsMetrics}
+                selectedDate={selectedDate}
             />
 
             {/* Main Tabs Navigation */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setViewTab('PIPELINE_EDITOR')}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-                            viewTab === 'PIPELINE_EDITOR'
-                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                        }`}
-                    >
-                        <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>1. Editor Surat Perintah Kerja (Pipeline)</span>
-                    </button>
-
-                    <button
-                        onClick={() => setViewTab('SCHEDULER_WORKSPACE')}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-                            viewTab === 'SCHEDULER_WORKSPACE'
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                        }`}
-                    >
-                        <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>2. Daily Timeline Scheduler (Drag & Drop)</span>
-                    </button>
-
-                    <button
-                        onClick={() => setViewTab('WORK_ORDERS')}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-                            viewTab === 'WORK_ORDERS'
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                        }`}
-                    >
-                        <Briefcase className="w-3.5 h-3.5" />
-                        <span>3. Arsip Seluruh Work Order</span>
-                        <span className="px-1.5 py-0.2 text-[10px] bg-slate-950/60 rounded-full font-mono">
-                            {workOrders.length}
-                        </span>
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={fetchData}
-                        disabled={isLoading}
-                        className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-slate-700"
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                        <span>Sync Data</span>
-                    </button>
-                </div>
-            </div>
+            <WorkOrderHeaderTabs
+                viewTab={viewTab}
+                setViewTab={setViewTab}
+                workOrdersCount={workOrders.length}
+                isLoading={isLoading}
+                onSync={fetchData}
+            />
 
             {/* Controls Bar & Daily Date Filter */}
             <WorkOrderControlsBar
@@ -546,39 +483,14 @@ export default function WorkOrderManagerView() {
                 shiftSelectedDate={shiftSelectedDate}
                 resetDateToToday={resetDateToToday}
                 onOpenCreateCustom={() => {
-                    setEditingWo(null);
-                    setFormData({
-                        woType: 'PREVENTIVE_MAINTENANCE',
-                        title: '',
-                        description: '',
-                        priority: 'MEDIUM',
-                        status: 'ASSIGNED',
-                        targetDate: selectedDate,
-                        startTime: '08:00',
-                        endTime: '10:00',
-                        estimatedHours: 2.0,
-                        unitCycleTimeMinutes: 30,
-                        targetDurationMinutes: 120,
-                        actualHours: '',
-                        actualStartTime: '',
-                        actualEndTime: '',
-                        actualDurationMinutes: '',
-                        assignedTechnicianNik: '',
-                        assignedTechnicianName: '',
-                        teamMembers: [],
-                        devices: [],
-                        referenceId: '',
-                        completionNotes: '',
-                        remarks: ''
-                    });
+                    resetWorkOrderForm(selectedDate);
                     setIsModalOpen(true);
                 }}
             />
 
-            {/* TAB 1: INTEGRATED PIPELINE FORM EDITOR (SEPERTI BERITA ACARA IT) */}
+            {/* TAB 1: INTEGRATED PIPELINE FORM EDITOR */}
             {viewTab === 'PIPELINE_EDITOR' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
-                    {/* Panel Kiri: Antrean Task Open (4 Kolom) */}
                     <div className="lg:col-span-4">
                         <WorkOrderOpenTasksQueue
                             tasks={filteredSourceTasks}
@@ -586,43 +498,16 @@ export default function WorkOrderManagerView() {
                             setSearchQuery={setSearchQuery}
                             onSelectTask={(task) => {
                                 handleAssignFromTask(task);
-                                setIsModalOpen(false); // keep in pipeline editor view
+                                setIsModalOpen(false);
                             }}
                             onSelectGroup={(group) => {
                                 handleAssignFromGroup(group);
-                                setIsModalOpen(false); // keep in pipeline editor view
+                                setIsModalOpen(false);
                             }}
-                            onOpenCreateCustom={() => {
-                                setEditingWo(null);
-                                setFormData({
-                                    woType: 'PREVENTIVE_MAINTENANCE',
-                                    title: '',
-                                    description: '',
-                                    priority: 'MEDIUM',
-                                    status: 'ASSIGNED',
-                                    targetDate: selectedDate,
-                                    startTime: '08:00',
-                                    endTime: '10:00',
-                                    estimatedHours: 2.0,
-                                    unitCycleTimeMinutes: 30,
-                                    targetDurationMinutes: 120,
-                                    actualHours: '',
-                                    actualStartTime: '',
-                                    actualEndTime: '',
-                                    actualDurationMinutes: '',
-                                    assignedTechnicianNik: '',
-                                    assignedTechnicianName: '',
-                                    teamMembers: [],
-                                    devices: [],
-                                    referenceId: '',
-                                    completionNotes: '',
-                                    remarks: ''
-                                });
-                            }}
+                            onOpenCreateCustom={() => resetWorkOrderForm(selectedDate)}
                         />
                     </div>
 
-                    {/* Panel Kanan: Form Editor Surat Perintah Kerja (8 Kolom) */}
                     <div className="lg:col-span-8">
                         <WorkOrderPipelineEditor
                             formData={formData}
@@ -637,33 +522,7 @@ export default function WorkOrderManagerView() {
                                     setEditingWo(null);
                                 }
                             }}
-                            onCancel={() => {
-                                setEditingWo(null);
-                                setFormData({
-                                    woType: 'PREVENTIVE_MAINTENANCE',
-                                    title: '',
-                                    description: '',
-                                    priority: 'MEDIUM',
-                                    status: 'ASSIGNED',
-                                    targetDate: selectedDate,
-                                    startTime: '08:00',
-                                    endTime: '10:00',
-                                    estimatedHours: 2.0,
-                                    unitCycleTimeMinutes: 30,
-                                    targetDurationMinutes: 120,
-                                    actualHours: '',
-                                    actualStartTime: '',
-                                    actualEndTime: '',
-                                    actualDurationMinutes: '',
-                                    assignedTechnicianNik: '',
-                                    assignedTechnicianName: '',
-                                    teamMembers: [],
-                                    devices: [],
-                                    referenceId: '',
-                                    completionNotes: '',
-                                    remarks: ''
-                                });
-                            }}
+                            onCancel={() => resetWorkOrderForm(selectedDate)}
                             onSelectTechnician={handleSelectTechnician}
                             isLoading={isLoading}
                         />
@@ -673,7 +532,7 @@ export default function WorkOrderManagerView() {
 
             {/* TAB 2: INTEGRATED SCHEDULER WORKSPACE */}
             {viewTab === 'SCHEDULER_WORKSPACE' && (
-                <div className="flex items-stretch gap-3 flex-1 h-[calc(100vh-320px)] min-h-[550px] overflow-hidden">
+                <div className="flex flex-col lg:flex-row items-stretch gap-3 flex-1 h-[calc(100vh-280px)] min-h-[500px] overflow-hidden">
                     <TaskPoolSidebar
                         tasks={filteredSourceTasks}
                         onAssignTask={handleAssignFromTask}
@@ -691,11 +550,12 @@ export default function WorkOrderManagerView() {
                         onWoClick={handleViewDetail}
                         onBreakClick={handleBreakClick}
                         onOpenAddBreak={() => handleOpenAddBreak()}
+                        onSelectTechnician={handleCardTechClick}
                     />
                 </div>
             )}
 
-            {/* TAB 2: ARSIP SEMUA WORK ORDERS */}
+            {/* TAB 3: ARSIP SEMUA WORK ORDERS */}
             {viewTab === 'WORK_ORDERS' && (
                 <WorkOrdersTable
                     workOrders={filteredWorkOrders}
@@ -758,3 +618,4 @@ export default function WorkOrderManagerView() {
         </div>
     );
 }
+

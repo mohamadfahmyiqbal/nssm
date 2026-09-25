@@ -1,9 +1,9 @@
 import React from 'react';
 import { Briefcase, XCircle } from 'lucide-react';
-import WorkOrderDeviceSelect from './WorkOrderDeviceSelect';
-import WorkOrderTechnicianSelect from './WorkOrderTechnicianSelect';
-import WorkOrderTimeScheduleFields from './WorkOrderTimeScheduleFields';
-import WorkOrderActualFields from './WorkOrderActualFields';
+import WorkOrderDeviceSelect from '../forms/WorkOrderDeviceSelect';
+import WorkOrderTechnicianSelect from '../forms/WorkOrderTechnicianSelect';
+import WorkOrderTimeScheduleFields from '../forms/WorkOrderTimeScheduleFields';
+import WorkOrderActualFields from '../forms/WorkOrderActualFields';
 
 export default function WorkOrderModal({
     isOpen,

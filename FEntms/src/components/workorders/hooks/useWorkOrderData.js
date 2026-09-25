@@ -12,8 +12,8 @@ import {
     getUsersFromDB,
     getMaintenanceSchedulesFromDB,
     getIncidentReportsFromDB
-} from '../../services/api';
-import { showToast, showConfirm } from '../../utils/swal';
+} from '../../../services/api';
+import { showToast, showConfirm } from '../../../utils/swal';
 
 export function useWorkOrderData() {
     const [workOrders, setWorkOrders] = useState([]);
