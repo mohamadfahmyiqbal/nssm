@@ -55,11 +55,17 @@ export const createIncidentReport = async (req, res) => {
             reportNumber,
             reportDate,
             reporter,
+            reporterNik,
+            reporterJabatan,
+            reporterDept,
             discoveredTime,
             startTime,
             endTime,
             totalDowntime,
             status = 'OPEN',
+            priority = 'HIGH',
+            category = 'NETWORK',
+            repairType = 'PERMANENT',
             devices = [],
             primaryHostname,
             primaryIp,
@@ -68,8 +74,12 @@ export const createIncidentReport = async (req, res) => {
             assignedTechnicianNik,
             symptom,
             impact,
+            initialCheck,
+            diagnosis,
             rootCause,
             actionTaken,
+            replacedParts = [],
+            preventiveAction,
             createdBy = 'SYSTEM',
             sendToTeams = true
         } = req.body;
@@ -79,6 +89,7 @@ export const createIncidentReport = async (req, res) => {
         }
 
         const devicesJson = JSON.stringify(devices);
+        const replacedPartsJson = Array.isArray(replacedParts) ? JSON.stringify(replacedParts) : null;
 
         // Check jika laporan dengan reportNumber ini sudah ada di database (Upsert)
         let report = await IncidentReport.findOne({ where: { reportNumber } });
@@ -87,21 +98,31 @@ export const createIncidentReport = async (req, res) => {
             // Update existing report
             report.reportDate = reportDate || report.reportDate;
             report.reporter = reporter || report.reporter;
-            if (discoveredTime) report.discoveredTime = discoveredTime;
-            if (startTime) report.startTime = startTime;
-            if (endTime) report.endTime = endTime;
-            if (totalDowntime) report.totalDowntime = totalDowntime;
-            if (status) report.status = status;
+            if (reporterNik !== undefined) report.reporterNik = reporterNik;
+            if (reporterJabatan !== undefined) report.reporterJabatan = reporterJabatan;
+            if (reporterDept !== undefined) report.reporterDept = reporterDept;
+            if (discoveredTime !== undefined) report.discoveredTime = discoveredTime;
+            if (startTime !== undefined) report.startTime = startTime;
+            if (endTime !== undefined) report.endTime = endTime;
+            if (totalDowntime !== undefined) report.totalDowntime = totalDowntime;
+            if (status !== undefined) report.status = status;
+            if (priority !== undefined) report.priority = priority;
+            if (category !== undefined) report.category = category;
+            if (repairType !== undefined) report.repairType = repairType;
             report.devicesJson = devicesJson;
             report.primaryHostname = primaryHostname || (devices[0]?.hostname || devices[0]?.name || report.primaryHostname);
             report.primaryIp = primaryIp || (devices[0]?.ip || report.primaryIp);
             report.location = location || (devices[0]?.location || report.location);
-            if (assignedTechnician) report.assignedTechnician = assignedTechnician;
-            if (assignedTechnicianNik) report.assignedTechnicianNik = assignedTechnicianNik;
-            if (symptom) report.symptom = symptom;
-            if (impact) report.impact = impact;
-            if (rootCause) report.rootCause = rootCause;
-            if (actionTaken) report.actionTaken = actionTaken;
+            if (assignedTechnician !== undefined) report.assignedTechnician = assignedTechnician;
+            if (assignedTechnicianNik !== undefined) report.assignedTechnicianNik = assignedTechnicianNik;
+            if (symptom !== undefined) report.symptom = symptom;
+            if (impact !== undefined) report.impact = impact;
+            if (initialCheck !== undefined) report.initialCheck = initialCheck;
+            if (diagnosis !== undefined) report.diagnosis = diagnosis;
+            if (rootCause !== undefined) report.rootCause = rootCause;
+            if (actionTaken !== undefined) report.actionTaken = actionTaken;
+            if (replacedPartsJson !== null) report.replacedPartsJson = replacedPartsJson;
+            if (preventiveAction !== undefined) report.preventiveAction = preventiveAction;
             await report.save();
         } else {
             // Create new report
@@ -109,11 +130,17 @@ export const createIncidentReport = async (req, res) => {
                 reportNumber,
                 reportDate: reportDate || new Date().toLocaleDateString('id-ID'),
                 reporter: reporter || 'Sistem Monitoring IT',
+                reporterNik,
+                reporterJabatan,
+                reporterDept,
                 discoveredTime,
                 startTime,
                 endTime,
                 totalDowntime,
                 status,
+                priority,
+                category,
+                repairType,
                 devicesJson,
                 primaryHostname: primaryHostname || (devices[0]?.hostname || devices[0]?.name || 'Device'),
                 primaryIp: primaryIp || (devices[0]?.ip || '-'),
@@ -122,8 +149,12 @@ export const createIncidentReport = async (req, res) => {
                 assignedTechnicianNik,
                 symptom,
                 impact,
+                initialCheck,
+                diagnosis,
                 rootCause,
                 actionTaken,
+                replacedPartsJson,
+                preventiveAction,
                 createdBy
             });
         }

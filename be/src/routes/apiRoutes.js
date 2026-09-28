@@ -10,6 +10,17 @@ import {
     bulkDeleteDevices
 } from '../controllers/deviceController.js';
 import {
+    getAllProfiles,
+    getProfileById,
+    createProfile,
+    updateProfile,
+    deleteProfile,
+    addOidToProfile,
+    updateOid,
+    deleteOid,
+    testLiveOid
+} from '../controllers/snmpProfileController.js';
+import {
     getDeviceSnmp,
     getNvrSnmp,
     testSnmp,
@@ -167,5 +178,17 @@ router.delete('/floorplans/:id', deleteFloorplan);
 // Setting Routes
 router.get('/settings/:key', getSettingByKey);
 router.post('/settings', saveSetting);
+
+// Dynamic SNMP Profiles & OID Metrics Routes
+router.get('/snmp-profiles', getAllProfiles);
+router.get('/snmp-profiles/:id', getProfileById);
+router.post('/snmp-profiles', createProfile);
+router.put('/snmp-profiles/:id', updateProfile);
+router.delete('/snmp-profiles/:id', deleteProfile);
+
+router.post('/snmp-profiles/:profile_id/oids', addOidToProfile);
+router.put('/snmp-profiles/oids/:id', updateOid);
+router.delete('/snmp-profiles/oids/:id', deleteOid);
+router.post('/snmp-profiles/test-oid', testLiveOid);
 
 export default router;

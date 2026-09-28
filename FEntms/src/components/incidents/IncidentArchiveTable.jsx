@@ -273,7 +273,7 @@ export default function IncidentArchiveTable({
                                 </div>
                                 <div className="text-slate-300 pt-1">
                                     Perangkat: <span className="text-white font-bold">{selectedAuditReport.primaryHostname}</span> ({selectedAuditReport.primaryIp}) <br />
-                                    Lokasi: {selectedAuditReport.location || 'Server Room'} | Pelapor: {selectedAuditReport.reporter}
+                                    Lokasi: {selectedAuditReport.location || 'Server Room'} | Pelapor: <span className="text-cyan-300 font-bold">{selectedAuditReport.reporter}</span> {selectedAuditReport.reporterNik ? `(${selectedAuditReport.reporterNik})` : ''} {selectedAuditReport.reporterDept ? `• Dept: ${selectedAuditReport.reporterDept}` : ''}
                                 </div>
                             </div>
 
@@ -283,6 +283,9 @@ export default function IncidentArchiveTable({
                                     <span className="flex items-center gap-1.5">
                                         <Activity className="w-3.5 h-3.5" />
                                         2. Triage & Klasifikasi Dampak
+                                    </span>
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        {selectedAuditReport.category || 'NETWORK'} • {selectedAuditReport.priority || 'HIGH'}
                                     </span>
                                 </div>
                                 <div className="text-slate-300 pt-1 space-y-0.5">

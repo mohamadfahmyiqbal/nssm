@@ -10,7 +10,8 @@ export const STD_OIDS = [
     '1.3.6.1.2.1.1.6.0',     // 3: sysLocation
     '1.3.6.1.2.1.2.1.0',     // 4: totalInterfaces
     '1.3.6.1.2.1.2.2.1.10.1', // 5: netIn
-    '1.3.6.1.2.1.2.2.1.16.1'  // 6: netOut
+    '1.3.6.1.2.1.2.2.1.16.1', // 6: netOut
+    '1.3.6.1.2.1.1.2.0'      // 7: sysObjectID
 ];
 
 /**
@@ -26,6 +27,9 @@ export const fetchStandardMetrics = (session) => {
 
             if (vbs[0] && !snmp.isVarbindError(vbs[0])) {
                 info.sysDescr = vbs[0].value.toString().split('\n')[0];
+            }
+            if (vbs[7] && !snmp.isVarbindError(vbs[7])) {
+                info.sysObjectID = vbs[7].value.toString();
             }
             if (vbs[1] && !snmp.isVarbindError(vbs[1])) {
                 const sec = Math.floor(vbs[1].value / 100);

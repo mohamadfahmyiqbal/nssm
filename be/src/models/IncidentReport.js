@@ -24,6 +24,21 @@ const IncidentReport = sequelize.define('IncidentReport', {
         allowNull: false,
         field: 'REPORTER'
     },
+    reporterNik: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        field: 'REPORTER_NIK'
+    },
+    reporterJabatan: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        field: 'REPORTER_JABATAN'
+    },
+    reporterDept: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        field: 'REPORTER_DEPT'
+    },
     discoveredTime: {
         type: DataTypes.STRING(30),
         allowNull: true,
@@ -49,6 +64,24 @@ const IncidentReport = sequelize.define('IncidentReport', {
         allowNull: false,
         defaultValue: 'OPEN',
         field: 'STATUS'
+    },
+    priority: {
+        type: DataTypes.STRING(30),
+        allowNull: true,
+        defaultValue: 'HIGH',
+        field: 'PRIORITY'
+    },
+    category: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        defaultValue: 'NETWORK',
+        field: 'CATEGORY'
+    },
+    repairType: {
+        type: DataTypes.STRING(30), // 'TEMPORARY' or 'PERMANENT'
+        allowNull: true,
+        defaultValue: 'PERMANENT',
+        field: 'REPAIR_TYPE'
     },
     devicesJson: {
         type: DataTypes.TEXT,
@@ -90,6 +123,16 @@ const IncidentReport = sequelize.define('IncidentReport', {
         allowNull: true,
         field: 'IMPACT'
     },
+    initialCheck: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'INITIAL_CHECK'
+    },
+    diagnosis: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'DIAGNOSIS'
+    },
     rootCause: {
         type: DataTypes.TEXT,
         allowNull: true,
@@ -99,6 +142,16 @@ const IncidentReport = sequelize.define('IncidentReport', {
         type: DataTypes.TEXT,
         allowNull: true,
         field: 'ACTION_TAKEN'
+    },
+    replacedPartsJson: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'REPLACED_PARTS_JSON'
+    },
+    preventiveAction: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'PREVENTIVE_ACTION'
     },
     createdBy: {
         type: DataTypes.STRING(100),

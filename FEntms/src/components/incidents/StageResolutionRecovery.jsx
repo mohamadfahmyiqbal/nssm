@@ -18,6 +18,35 @@ export default function StageResolutionRecovery({
             </div>
 
             <div className="space-y-3 text-xs font-mono">
+                {/* Status Sifat Perbaikan (Formulir F-PIK: Sementara vs Permanen) */}
+                <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-300">Sifat Penanganan Perbaikan:</span>
+                    <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="repairType"
+                                value="TEMPORARY"
+                                checked={reportForm.repairType === 'TEMPORARY'}
+                                onChange={() => setReportForm({ ...reportForm, repairType: 'TEMPORARY' })}
+                                className="text-amber-500 bg-slate-950 border-slate-700"
+                            />
+                            <span className="text-amber-400 font-bold text-[11px]">Sementara (Temporary)</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="repairType"
+                                value="PERMANENT"
+                                checked={reportForm.repairType !== 'TEMPORARY'}
+                                onChange={() => setReportForm({ ...reportForm, repairType: 'PERMANENT' })}
+                                className="text-emerald-500 bg-slate-950 border-slate-700"
+                            />
+                            <span className="text-emerald-400 font-bold text-[11px]">Permanen</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div>
                     <label className="text-[10px] text-slate-400 block mb-1">Tindakan Perbaikan / Recovery yang Dilakukan:</label>
                     <textarea
@@ -31,7 +60,7 @@ export default function StageResolutionRecovery({
 
                 <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="text-[10px] text-slate-400 block mb-1">Total Downtime:</label>
+                        <label className="text-[10px] text-slate-400 block mb-1">Total Downtime (Durasi Terganggu):</label>
                         <input
                             type="text"
                             placeholder="Contoh: 15 Menit"
@@ -44,7 +73,7 @@ export default function StageResolutionRecovery({
                         <label className="text-[10px] text-slate-400 block mb-1">Status Pemulihan:</label>
                         <select
                             value={reportForm.finalStatus || 'IN PROGRESS'}
-                            onChange={(e) => setReportForm({ ...reportForm, finalStatus: e.target.value })}
+                            onChange={(e) => setReportForm({ ...reportForm, finalStatus: e.target.value, status: e.target.value })}
                             className="w-full bg-slate-900 border border-slate-700 text-emerald-400 font-bold rounded-lg px-2.5 py-1.5 text-xs outline-none"
                         >
                             <option value="IN PROGRESS">IN PROGRESS (Sedang Ditangani)</option>

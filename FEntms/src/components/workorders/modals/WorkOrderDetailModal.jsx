@@ -202,10 +202,10 @@ export default function WorkOrderDetailModal({
                             </div>
 
                             {/* Tabel Checklist Item Seperti di PDF */}
-                            <div className="border border-slate-800 rounded-lg overflow-hidden">
-                                <table className="w-full text-left border-collapse text-xs">
-                                    <thead>
-                                        <tr className="bg-slate-900 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            <div className="border border-slate-800 rounded-lg overflow-x-auto overflow-y-auto max-h-64 sm:max-h-80 custom-scrollbar">
+                                <table className="w-full min-w-[500px] text-left border-collapse text-xs">
+                                    <thead className="sticky top-0 z-10">
+                                        <tr className="bg-slate-900 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono shadow-sm">
                                             <th className="py-2.5 px-3 w-10 text-center">No</th>
                                             <th className="py-2.5 px-3">Uraian / Item Pengecekan</th>
                                             <th className="py-2.5 px-3 w-36 text-center">Status</th>

@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import TopologyCanvas from './components/dashboard/TopologyCanvas';
 import InventoryTable from './components/inventory/InventoryTable';
+import SnmpProfilesManagerView from './components/inventory/SnmpProfilesManagerView';
 import FloorplanEditor from './components/mapping/FloorplanEditor';
 import ReportsView from './components/reports/ReportsView';
 import IncidentManagerView from './components/incidents/IncidentManagerView';
@@ -21,6 +22,7 @@ export default function App() {
   const tabTitles = useMemo(() => ({
     dashboard: 'Network Topology Visualizer',
     inventory: 'Device Inventory & Configurations',
+    'snmp-profiles': 'SNMP Dynamic Profiles & Metric OIDs',
     schedules: 'ITAM Maintenance Schedules & Gantt Timeline',
     workorders: 'Work Order Pipeline & Task Queue',
     'daily-scheduler': 'Daily Timeline Scheduler & Man Power',
@@ -78,6 +80,7 @@ export default function App() {
                 />
               )}
               {activeTab === 'inventory' && <InventoryTable />}
+              {activeTab === 'snmp-profiles' && <SnmpProfilesManagerView />}
               {activeTab === 'schedules' && <ScheduleGanttView />}
               {activeTab === 'workorders' && <WorkOrderManagerView initialViewTab="PIPELINE_EDITOR" />}
               {activeTab === 'daily-scheduler' && <WorkOrderManagerView initialViewTab="SCHEDULER_WORKSPACE" />}

@@ -83,6 +83,8 @@ import Setting from './src/models/Setting.js';
 import DeviceLog from './src/models/DeviceLog.js';
 import TopologyDrawing from './src/models/TopologyDrawing.js';
 import IncidentReport from './src/models/IncidentReport.js';
+import SnmpProfile from './src/models/SnmpProfile.js';
+import SnmpProfileOid from './src/models/SnmpProfileOid.js';
 
 // ==========================================
 // 4. SERVER BOOTSTRAP & WORKER INITIALIZATION
@@ -91,13 +93,15 @@ const startServer = async () => {
     // Tes koneksi database SQL
     await testDbConnection();
 
-    // Pastikan tabel tercipta sebelum server listen
+    // Pastikan tabel tercipta dan kolom baru ditambahkan sebelum server listen
     try {
-        await Setting.sync();
-        await DeviceLog.sync();
-        await TopologyDrawing.sync();
-        await IncidentReport.sync();
-        console.log('✅ [Sequelize ORM] Setting, DeviceLog, TopologyDrawing & IncidentReport tables synchronized.');
+        await Setting.sync({ alter: true });
+        await DeviceLog.sync({ alter: true });
+        await TopologyDrawing.sync({ alter: true });
+        await IncidentReport.sync({ alter: true });
+        await SnmpProfile.sync({ alter: true });
+        await SnmpProfileOid.sync({ alter: true });
+        console.log('✅ [Sequelize ORM] Tables and columns synchronized.');
     } catch (err) {
         console.error('❌ [Sequelize ORM] Failed to sync tables:', err.message);
     }

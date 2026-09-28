@@ -6,12 +6,19 @@ import { showToast } from '../../../utils/swal';
 const getDefaultForm = () => ({
     reportNumber: `INC-${Date.now().toString().slice(-6)}`,
     date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    reporter: 'Sistem Monitoring IT (Auto)',
+    reporter: '',
+    reporterNik: '',
+    reporterJabatan: '',
+    reporterDept: '',
     discoveredTime: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
     startTime: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
     endTime: '',
     totalDowntime: '',
     finalStatus: 'IN PROGRESS',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
+    category: 'NETWORK',
+    repairType: 'PERMANENT',
     deviceId: '',
     hostname: '',
     ip: '',
@@ -28,7 +35,8 @@ const getDefaultForm = () => ({
     diagnosis: '',
     actionTaken: '',
     rootCause: '',
-    preventiveAction: ''
+    preventiveAction: '',
+    replacedParts: []
 });
 
 export const useIncidentForm = ({ devices, onReportSaved }) => {
@@ -139,11 +147,17 @@ export const useIncidentForm = ({ devices, onReportSaved }) => {
                 reportNumber: reportForm.reportNumber,
                 reportDate: reportForm.date,
                 reporter: reportForm.reporter,
+                reporterNik: reportForm.reporterNik,
+                reporterJabatan: reportForm.reporterJabatan,
+                reporterDept: reportForm.reporterDept,
                 discoveredTime: reportForm.discoveredTime,
                 startTime: reportForm.startTime,
                 endTime: reportForm.endTime,
                 totalDowntime: reportForm.totalDowntime,
-                status: reportForm.finalStatus || 'IN PROGRESS',
+                status: reportForm.finalStatus || reportForm.status || 'IN PROGRESS',
+                priority: reportForm.priority || 'HIGH',
+                category: reportForm.category || 'NETWORK',
+                repairType: reportForm.repairType || 'PERMANENT',
                 devices: selectedDevices.length > 0 ? selectedDevices.map(d => ({
                     hostname: d.hostname || d.name,
                     ip: d.ip,
@@ -166,8 +180,12 @@ export const useIncidentForm = ({ devices, onReportSaved }) => {
                 assignedTechnicianNik: reportForm.assignedTechnicianNik,
                 symptom: reportForm.symptom,
                 impact: reportForm.impact,
+                initialCheck: reportForm.initialCheck,
+                diagnosis: reportForm.diagnosis,
                 rootCause: reportForm.rootCause,
                 actionTaken: reportForm.actionTaken,
+                replacedParts: reportForm.replacedParts || [],
+                preventiveAction: reportForm.preventiveAction,
                 sendToTeams: sendTeamsNotice
             };
 

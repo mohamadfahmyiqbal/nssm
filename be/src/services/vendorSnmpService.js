@@ -16,6 +16,7 @@ import {
     formatAtsMetrics,
     upgradeProfileFromSysDescr
 } from './vendorMetricsFormatter.js';
+import { resolveDynamicProfile, fetchDynamicOidMetrics } from './dynamicOidService.js';
 
 export { DEFAULT_VENDOR_PROFILES, resolveVendorProfile };
 
@@ -164,6 +165,17 @@ export const fetchVendorMetrics = async (ip, credential, profile) => {
             const specData = await fetchSpecificOids(session, activeProfile);
             result.info = { ...result.info, ...(specData.info || {}) };
             result.resources = { ...result.resources, ...(specData.resources || {}) };
+
+            // 2b. Dynamic Database OID Profile Evaluation
+            const dynamicProf = await resolveDynamicProfile({ vendor: profile.name, type: profile.category }, result.info?.sysObjectID);
+            if (dynamicProf && dynamicProf.oids && dynamicProf.oids.length > 0) {
+                const dynamicMetrics = await fetchDynamicOidMetrics(session, dynamicProf);
+                result.info = { ...result.info, ...(dynamicMetrics.info || {}) };
+                result.resources = { ...result.resources, ...(dynamicMetrics.resources || {}) };
+                if (dynamicProf.name) {
+                    result.vendor = dynamicProf.name;
+                }
+            }
 
             // Sinkronkan key cpuUsage & memoryUsage untuk kompatibilitas frontend
             if (result.resources.cpu && !result.resources.cpuUsage) {

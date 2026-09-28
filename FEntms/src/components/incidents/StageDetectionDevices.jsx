@@ -211,27 +211,61 @@ export default function StageDetectionDevices({
                 )}
             </div>
 
-            {/* Info Umum & Lokasi Gangguan */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono pt-1">
+            {/* Info Umum, Identitas Pemohon & Lokasi Gangguan */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono pt-1">
                 <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">Hostname / Label Perangkat:</label>
+                    <label className="text-[10px] text-slate-400 block mb-1">Nama Pemohon / Pelapor *:</label>
                     <input
                         type="text"
-                        placeholder="Contoh: PC-KASIR-01, PRINTER-HRD, CCTV-PARKIR-03..."
-                        value={reportForm.hostname || ''}
-                        onChange={(e) => setReportForm({ ...reportForm, hostname: e.target.value })}
+                        placeholder="Contoh: Ahmad Fauzi"
+                        value={reportForm.reporter || ''}
+                        onChange={(e) => setReportForm({ ...reportForm, reporter: e.target.value })}
                         className="w-full bg-slate-900 border border-slate-700 text-slate-100 font-bold rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
                     />
                 </div>
                 <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">IP Address / Port / VLAN (Opsional):</label>
+                    <label className="text-[10px] text-slate-400 block mb-1">NIK Pemohon:</label>
                     <input
                         type="text"
-                        placeholder="Contoh: 192.168.10.45 atau Non-IP..."
-                        value={reportForm.ip || ''}
-                        onChange={(e) => setReportForm({ ...reportForm, ip: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-700 text-cyan-400 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                        placeholder="Contoh: 1803070"
+                        value={reportForm.reporterNik || ''}
+                        onChange={(e) => setReportForm({ ...reportForm, reporterNik: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
                     />
+                </div>
+                <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">Jabatan Pemohon:</label>
+                    <input
+                        type="text"
+                        placeholder="Contoh: Staff / Leader / Supervisor"
+                        value={reportForm.reporterJabatan || ''}
+                        onChange={(e) => setReportForm({ ...reportForm, reporterJabatan: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                    />
+                </div>
+
+                <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">Departemen Pemohon:</label>
+                    <input
+                        type="text"
+                        placeholder="Contoh: Assembly / QC / HRD / Maintenance"
+                        value={reportForm.reporterDept || ''}
+                        onChange={(e) => setReportForm({ ...reportForm, reporterDept: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                    />
+                </div>
+                <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">Kategori Insiden (Form F-PIK):</label>
+                    <select
+                        value={reportForm.category || 'NETWORK'}
+                        onChange={(e) => setReportForm({ ...reportForm, category: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 text-indigo-300 font-bold rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                    >
+                        <option value="NETWORK">Jaringan / Network & Koneksi</option>
+                        <option value="HARDWARE">Hardware / Perangkat Fisik (Switch/NVR/PC)</option>
+                        <option value="SOFTWARE">Software / Aplikasi & Sistem</option>
+                        <option value="POWER_CCTV">Power / Kelistrikan & CCTV</option>
+                    </select>
                 </div>
                 <div>
                     <label className="text-[10px] text-slate-400 block mb-1">Waktu Kejadian Ditemukan:</label>
@@ -242,36 +276,34 @@ export default function StageDetectionDevices({
                         className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none"
                     />
                 </div>
+
                 <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">Sumber Informasi / Pelaporan:</label>
-                    <select
-                        value={reportForm.sourceInfo || 'Laporan User'}
-                        onChange={(e) => setReportForm({ ...reportForm, sourceInfo: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                    >
-                        <option value="Laporan User">Laporan User / PIC Unit (Telepon/Helpdesk)</option>
-                        <option value="Pengecekan Rutin">Pengecekan Rutin / Walkthrough Lapangan</option>
-                        <option value="Sistem Monitoring (SNMP/Alert)">Sistem Pemantauan Otomatis (SNMP/Alert)</option>
-                        <option value="Insiden Vendor">Laporan Vendor Eksternal / ISP</option>
-                    </select>
+                    <label className="text-[10px] text-slate-400 block mb-1">Hostname / Label Perangkat:</label>
+                    <input
+                        type="text"
+                        placeholder="Contoh: PC-KASIR-01, SWITCH-UTAMA..."
+                        value={reportForm.hostname || ''}
+                        onChange={(e) => setReportForm({ ...reportForm, hostname: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 text-slate-100 font-bold rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                    />
+                </div>
+                <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">IP Address / Port:</label>
+                    <input
+                        type="text"
+                        placeholder="Contoh: 192.168.10.45"
+                        value={reportForm.ip || ''}
+                        onChange={(e) => setReportForm({ ...reportForm, ip: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 text-cyan-400 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                    />
                 </div>
                 <div>
                     <label className="text-[10px] text-slate-400 block mb-1">Lokasi Fisik / Ruangan / Gedung:</label>
                     <input
                         type="text"
-                        placeholder="Contoh: Gedung A Lt. 3 / Ruang Keuangan..."
+                        placeholder="Contoh: Gedung A Lt. 3 / Ruang Server"
                         value={reportForm.location || ''}
                         onChange={(e) => setReportForm({ ...reportForm, location: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                    />
-                </div>
-                <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">Nama Pelapor / Unit Kerja:</label>
-                    <input
-                        type="text"
-                        placeholder="Contoh: Bpk. Ahmad (Dept. Finance)..."
-                        value={reportForm.reporter || ''}
-                        onChange={(e) => setReportForm({ ...reportForm, reporter: e.target.value })}
                         className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none"
                     />
                 </div>

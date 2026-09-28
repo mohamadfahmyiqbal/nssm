@@ -278,4 +278,53 @@ export const deleteScheduleBreakFromDB = async (id) => {
     return response.data;
 };
 
+/* ==========================================================================
+   SNMP PROFILES & DYNAMIC OIDS API SERVICES
+   ========================================================================== */
+
+export const getSnmpProfilesFromDB = async () => {
+    const response = await api.get('/snmp-profiles');
+    return response.data;
+};
+
+export const getSnmpProfileByIdFromDB = async (id) => {
+    const response = await api.get(`/snmp-profiles/${id}`);
+    return response.data;
+};
+
+export const createSnmpProfileInDB = async (data) => {
+    const response = await api.post('/snmp-profiles', data);
+    return response.data;
+};
+
+export const updateSnmpProfileInDB = async (id, data) => {
+    const response = await api.put(`/snmp-profiles/${id}`, data);
+    return response.data;
+};
+
+export const deleteSnmpProfileFromDB = async (id) => {
+    const response = await api.delete(`/snmp-profiles/${id}`);
+    return response.data;
+};
+
+export const addOidToProfileInDB = async (profileId, data) => {
+    const response = await api.post(`/snmp-profiles/${profileId}/oids`, data);
+    return response.data;
+};
+
+export const updateOidInDB = async (oidId, data) => {
+    const response = await api.put(`/snmp-profiles/oids/${oidId}`, data);
+    return response.data;
+};
+
+export const deleteOidFromDB = async (oidId) => {
+    const response = await api.delete(`/snmp-profiles/oids/${oidId}`);
+    return response.data;
+};
+
+export const testLiveOidInDB = async (testData) => {
+    const response = await api.post('/snmp-profiles/test-oid', testData);
+    return response.data;
+};
+
 export default api;

@@ -13,6 +13,7 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronDown,
+    Sliders,
     X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -51,6 +52,12 @@ export default function Sidebar({
             id: 'inventory', 
             label: 'Device Inventory', 
             icon: Server
+        },
+        { 
+            id: 'snmp-profiles', 
+            label: 'SNMP Profiles & OID', 
+            icon: Sliders,
+            badge: 'OID'
         },
         { 
             id: 'workorders-parent', 
