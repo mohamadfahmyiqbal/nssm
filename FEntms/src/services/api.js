@@ -327,4 +327,18 @@ export const testLiveOidInDB = async (testData) => {
     return response.data;
 };
 
+/* ==========================================================================
+   APP SETTINGS API SERVICES
+   ========================================================================== */
+
+export const getSettingFromDB = async (key) => {
+    const response = await api.get(`/settings/${key}`);
+    return response.data;
+};
+
+export const saveSettingToDB = async (key, value) => {
+    const response = await api.post('/settings', { key, value });
+    return response.data;
+};
+
 export default api;
